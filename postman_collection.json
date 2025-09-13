@@ -1,0 +1,386 @@
+{
+  "info": {
+    "name": "Crop Recommendation API",
+    "description": "Complete API collection for AI-based crop recommendation platform",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"securepassword123\",\n  \"location\": \"Punjab, India\",\n  \"farm_size\": 10.5,\n  \"preferred_language\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Soil Analysis",
+      "item": [
+        {
+          "name": "Get Soil Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/soil/28.6139/77.2090",
+              "host": ["{{base_url}}"],
+              "path": ["api", "soil", "28.6139", "77.2090"]
+            }
+          }
+        },
+        {
+          "name": "Analyze Soil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"soil_data\": {\n    \"ph\": 6.5,\n    \"moisture\": 0.3,\n    \"organic_matter\": 4.2,\n    \"nitrogen\": 0.25,\n    \"phosphorus\": 30,\n    \"potassium\": 200\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/soil/analyze",
+              "host": ["{{base_url}}"],
+              "path": ["api", "soil", "analyze"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weather Data",
+      "item": [
+        {
+          "name": "Get Weather",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/weather/Delhi",
+              "host": ["{{base_url}}"],
+              "path": ["api", "weather", "Delhi"]
+            }
+          }
+        },
+        {
+          "name": "Get Weather Forecast",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/weather/forecast/Delhi?days=7",
+              "host": ["{{base_url}}"],
+              "path": ["api", "weather", "forecast", "Delhi"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Agricultural Conditions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/weather/agricultural-conditions/Delhi",
+              "host": ["{{base_url}}"],
+              "path": ["api", "weather", "agricultural-conditions", "Delhi"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Market Data",
+      "item": [
+        {
+          "name": "Get Market Prices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/market/prices",
+              "host": ["{{base_url}}"],
+              "path": ["api", "market", "prices"]
+            }
+          }
+        },
+        {
+          "name": "Get Crop Price Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/market/prices/wheat",
+              "host": ["{{base_url}}"],
+              "path": ["api", "market", "prices", "wheat"]
+            }
+          }
+        },
+        {
+          "name": "Get Market Trends",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/market/trends",
+              "host": ["{{base_url}}"],
+              "path": ["api", "market", "trends"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crop Recommendations",
+      "item": [
+        {
+          "name": "Get Crop Recommendations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Punjab, India\",\n  \"soil_data\": {\n    \"ph\": 6.5,\n    \"moisture\": 0.3,\n    \"organic_matter\": 4.2\n  },\n  \"weather_data\": {\n    \"temperature\": 25,\n    \"humidity\": 60\n  },\n  \"farm_size\": 10.5,\n  \"budget\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recommend/crops",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommend", "crops"]
+            }
+          }
+        },
+        {
+          "name": "Optimize Recommendations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendations\": [\n    {\n      \"crop\": \"wheat\",\n      \"suitability_score\": 85,\n      \"estimated_cost\": 25000\n    }\n  ],\n  \"constraints\": {\n    \"labor_availability\": \"medium\",\n    \"water_availability\": \"high\",\n    \"equipment_available\": \"basic\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recommend/optimize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommend", "optimize"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Disease Detection",
+      "item": [
+        {
+          "name": "Detect Disease",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_data\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\",\n  \"crop_type\": \"wheat\",\n  \"location\": \"Punjab, India\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/disease/detect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "disease", "detect"]
+            }
+          }
+        },
+        {
+          "name": "Get Crop Diseases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/disease/diseases/wheat",
+              "host": ["{{base_url}}"],
+              "path": ["api", "disease", "diseases", "wheat"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Translation",
+      "item": [
+        {
+          "name": "Translate Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"What crops should I plant this season?\",\n  \"source_language\": \"en\",\n  \"target_language\": \"hi\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/translate/translate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "translate", "translate"]
+            }
+          }
+        },
+        {
+          "name": "Get Supported Languages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/translate/languages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "translate", "languages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Voice Queries",
+      "item": [
+        {
+          "name": "Process Voice Query",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"What's the weather like today?\",\n  \"location\": \"Delhi, India\",\n  \"language\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/voice/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "voice", "query"]
+            }
+          }
+        },
+        {
+          "name": "Start Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Punjab, India\",\n  \"language\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/voice/conversation",
+              "host": ["{{base_url}}"],
+              "path": ["api", "voice", "conversation"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
