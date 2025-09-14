@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-09-13T12:32:26.788424",
+  "base_url": "http://localhost:5000",
+  "total_tests": 16,
+  "passed_tests": 16,
+  "failed_tests": 0,
+  "test_details": [
+    {
+      "test": "Health Check",
+      "success": true,
+      "details": "Status: healthy",
+      "timestamp": "2025-09-13T12:31:51.959065"
+    },
+    {
+      "test": "User Registration",
+      "success": true,
+      "details": "User ID: 8",
+      "timestamp": "2025-09-13T12:31:56.495263"
+    },
+    {
+      "test": "Soil Data Retrieval",
+      "success": true,
+      "details": "pH: 6.88",
+      "timestamp": "2025-09-13T12:31:58.607974"
+    },
+    {
+      "test": "Soil Analysis",
+      "success": true,
+      "details": "Quality Score: 95",
+      "timestamp": "2025-09-13T12:32:00.672113"
+    },
+    {
+      "test": "Weather Data",
+      "success": true,
+      "details": "Temperature: 23.2\u00b0C",
+      "timestamp": "2025-09-13T12:32:02.790306"
+    },
+    {
+      "test": "Agricultural Conditions",
+      "success": true,
+      "details": "Growing Condition: optimal",
+      "timestamp": "2025-09-13T12:32:04.884562"
+    },
+    {
+      "test": "Market Prices",
+      "success": true,
+      "details": "Total crops: 15",
+      "timestamp": "2025-09-13T12:32:06.973428"
+    },
+    {
+      "test": "Crop Price Details",
+      "success": true,
+      "details": "Current Price: \u20b9200.22",
+      "timestamp": "2025-09-13T12:32:09.017160"
+    },
+    {
+      "test": "Market Trends",
+      "success": true,
+      "details": "Market Sentiment: negative",
+      "timestamp": "2025-09-13T12:32:11.087775"
+    },
+    {
+      "test": "Crop Recommendations",
+      "success": true,
+      "details": "Generated 0 recommendations",
+      "timestamp": "2025-09-13T12:32:13.154543"
+    },
+    {
+      "test": "Disease Detection",
+      "success": true,
+      "details": "Disease: Powdery Mildew, Confidence: 0.7341790761249698",
+      "timestamp": "2025-09-13T12:32:16.273418"
+    },
+    {
+      "test": "Disease List",
+      "success": true,
+      "details": "Found 3 diseases for wheat",
+      "timestamp": "2025-09-13T12:32:18.320324"
+    },
+    {
+      "test": "Text Translation",
+      "success": true,
+      "details": "Translated: [Hindi] Hello, how is the weather today?",
+      "timestamp": "2025-09-13T12:32:20.487243"
+    },
+    {
+      "test": "Language Detection",
+      "success": true,
+      "details": "Detected: Hindi",
+      "timestamp": "2025-09-13T12:32:22.562241"
+    },
+    {
+      "test": "Voice Query",
+      "success": true,
+      "details": "Intent: weather, Confidence: 0.7712605565004256",
+      "timestamp": "2025-09-13T12:32:24.715310"
+    },
+    {
+      "test": "Supported Intents",
+      "success": true,
+      "details": "Found 6 intents",
+      "timestamp": "2025-09-13T12:32:26.773440"
+    }
+  ]
+}
