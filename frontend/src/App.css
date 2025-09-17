@@ -389,6 +389,345 @@
 .text-blue-500 { color: #4299e1; }
 .text-gray-500 { color: #a0aec0; }
 
+/* Soil Analysis Styles */
+.soil-analysis {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.analysis-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.input-section {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.input-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 1.5rem 0;
+}
+
+.soil-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #2d3748;
+  font-size: 0.875rem;
+}
+
+.form-group input {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
+}
+
+.analyze-button {
+  background: #2b6cb0;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+.analyze-button:hover:not(:disabled) {
+  background: #2c5282;
+}
+
+.analyze-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.results-section {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.results-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 1.5rem 0;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.result-card {
+  background: #f7fafc;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.result-card h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4a5568;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.result-card p {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.fertility.high { color: #38a169; }
+.fertility.medium { color: #d69e2e; }
+.fertility.low { color: #e53e3e; }
+
+.recommendations {
+  margin-bottom: 2rem;
+}
+
+.recommendations h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+}
+
+.recommendations ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recommendations li {
+  background: #edf2f7;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.375rem;
+  border-left: 4px solid #2b6cb0;
+}
+
+/* Crop Recommendations Styles */
+.crop-recommendations {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.crop-recommendations h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.crop-recommendations h3 .icon {
+  color: #38a169;
+}
+
+.loading-text {
+  color: #718096;
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.crop-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.crop-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.crop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.crop-header h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.crop-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.suitability-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #38a169;
+}
+
+.confidence-score {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.crop-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.crop-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f7fafc;
+  border-radius: 0.375rem;
+}
+
+.metric .label {
+  font-size: 0.875rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.metric .value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.metric .value.profit {
+  color: #38a169;
+}
+
+.crop-factors h5,
+.crop-requirements h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.crop-factors ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.crop-factors li {
+  font-size: 0.875rem;
+  color: #4a5568;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.crop-factors li:last-child {
+  border-bottom: none;
+}
+
+.requirements-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.req-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f7fafc;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.req-label {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.req-value {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.more-crops {
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .navbar-container {
@@ -413,5 +752,35 @@
   
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-container {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .crop-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .crop-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .crop-score {
+    align-items: flex-start;
   }
 }
