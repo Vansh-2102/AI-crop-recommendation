@@ -68,7 +68,7 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-stats">
-        <div className="stat-card">
+        <Link to="/recommendations" className="stat-card">
           <div className="stat-icon">
             <BarChart3 size={24} />
           </div>
@@ -76,9 +76,9 @@ const Dashboard = () => {
             <h3>Farm Analytics</h3>
             <p>Track your farm's performance</p>
           </div>
-        </div>
+        </Link>
         
-        <div className="stat-card">
+        <Link to="/profile" className="stat-card">
           <div className="stat-icon">
             <User size={24} />
           </div>
@@ -86,7 +86,7 @@ const Dashboard = () => {
             <h3>Profile</h3>
             <p>Manage your account settings</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="features-grid">

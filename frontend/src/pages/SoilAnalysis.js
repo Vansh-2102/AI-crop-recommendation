@@ -388,8 +388,8 @@ const SoilAnalysis = () => {
                               <span className="req-value">{crop.growing_requirements?.soil_type?.join(', ')}</span>
                             </div>
                           </div>
-                        </div>
-                      </div>
+              </div>
+            </div>
                     </div>
                   ))}
                 </div>

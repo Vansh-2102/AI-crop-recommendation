@@ -5,7 +5,7 @@ import { marketAPI } from '../services/api';
 const Market = () => {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
-    commodity: 'Wheat',
+    commodity: 'Apple',
     state: '',
     market: '',
     limit: 25,
@@ -15,6 +15,13 @@ const Market = () => {
   const [records, setRecords] = useState([]);
   const [source, setSource] = useState('');
   const [error, setError] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check login status on component mount
+  React.useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,15 +30,52 @@ const Market = () => {
 
   const fetchMarketData = async (e) => {
     if (e) e.preventDefault();
+    
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      setError('Please log in to view market data.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     try {
+      console.log('Fetching market data with filters:', filters);
       const { data } = await marketAPI.getPrices(filters);
-      const recs = data.records || data.market_data || [];
+      console.log('Market API response:', data);
+      
+      // Handle both data formats from backend
+      let recs = [];
+      if (data.records) {
+        // Live data from data.gov.in
+        recs = data.records;
+      } else if (data.market_data) {
+        // Mock data format - convert to table format
+        recs = data.market_data.map(item => ({
+          arrival_date: new Date().toISOString().split('T')[0],
+          state: 'Sample State',
+          district: 'Sample District', 
+          market: 'Sample Market',
+          commodity: item.crop,
+          variety: 'Standard',
+          min_price: Math.round(item.current_price * 0.9),
+          max_price: Math.round(item.current_price * 1.1),
+          modal_price: item.current_price
+        }));
+      }
+      
+      console.log('Records found:', recs.length);
+      console.log('Sample record:', recs[0]);
+      
       setRecords(recs);
       setSource(data.source || (data.records ? 'data.gov.in' : 'mock'));
     } catch (err) {
-      setError(err?.response?.data?.error || 'Failed to fetch market data');
+      console.error('Market API error:', err);
+      if (err?.response?.status === 401) {
+        setError('Please log in to view market data.');
+      } else {
+        setError(err?.response?.data?.error || 'Failed to fetch market data');
+      }
       setRecords([]);
       setSource('');
     } finally {
@@ -49,6 +93,11 @@ const Market = () => {
       <div className="page-header">
         <h1>Market Prices</h1>
         <p>Current crop prices and market trends</p>
+        {!isLoggedIn && (
+          <div className="login-warning">
+            <span>⚠️ Please log in to view market data.</span>
+          </div>
+        )}
       </div>
 
       <div className="market-container">
@@ -56,7 +105,7 @@ const Market = () => {
           <div className="form-row">
             <div className="form-group">
               <label>Commodity</label>
-              <input name="commodity" value={filters.commodity} onChange={handleChange} placeholder="e.g., Wheat" />
+              <input name="commodity" value={filters.commodity} onChange={handleChange} placeholder="e.g., Apple, Rice, Potato" />
             </div>
             <div className="form-group">
               <label>State</label>
@@ -106,7 +155,15 @@ const Market = () => {
         <div className="results-section">
           <h2>Results {source ? `(${source})` : ''}</h2>
           {records.length === 0 ? (
-            <p>No records found.</p>
+            <div className="no-data-message">
+              <p>No records found for the selected filters.</p>
+              <p><strong>Tips:</strong></p>
+              <ul>
+                <li>Try searching for "Apple", "Rice", or "Potato" - these are commonly available</li>
+                <li>Leave commodity field empty to see all available data</li>
+                <li>Check if you're logged in to access live data</li>
+              </ul>
+            </div>
           ) : (
             <div className="table-responsive">
               <table className="data-table">

@@ -97,7 +97,8 @@ class SoilAPI:
     """SoilGrids API integration"""
     
     def __init__(self):
-        self.base_url = "https://www.data.gov.in/resource/daily-data-soil-moisture?utm_source"
+        # Correct SoilGrids v2.0 base URL
+        self.base_url = "https://rest.isric.org/soilgrids/v2.0"
         self.session = requests.Session()
         self.session.headers.update({
             'Accept': 'application/json',
@@ -211,6 +212,21 @@ class SoilAPI:
             logger.error(f"Soil API error: {e}")
             return self._get_fallback_soil_data()
     
+    def _get_fallback_soil_data(self) -> Dict[str, Any]:
+        """Fallback soil data when API fails"""
+        return {
+            'ph': 6.5,
+            'organic_matter': 2.0,
+            'nitrogen': 0.2,
+            'phosphorus': 20,
+            'potassium': 150,
+            'clay': 30,
+            'sand': 40,
+            'silt': 30,
+            'bulk_density': 1.3,
+            'cec': 15
+        }
+
     def _parse_soilgrids_value(self, data: Dict[str, Any]) -> Optional[float]:
         """Parse SoilGrids v2.0 response to a single float value.
         SoilGrids often returns under properties.layers[].depths[].values with

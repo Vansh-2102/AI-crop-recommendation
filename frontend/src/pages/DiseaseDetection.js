@@ -1,16 +1,33 @@
 import React, { useState } from 'react';
 import { Camera, Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { diseaseAPI } from '../services/api';
 
 const DiseaseDetection = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [cropType, setCropType] = useState('tomato');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check login status on component mount
+  React.useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   const handleImageUpload = (file) => {
+    console.log('File selected:', file);
+    console.log('File type:', file.type);
+    console.log('File size:', file.size);
+    
     if (file && file.type.startsWith('image/')) {
       setSelectedImage(file);
       setAnalysisResult(null);
+      console.log('Image uploaded successfully');
+    } else {
+      console.error('Invalid file type. Please select an image file.');
+      alert('Please select a valid image file.');
     }
   };
 
@@ -42,37 +59,89 @@ const DiseaseDetection = () => {
 
   const analyzeImage = async () => {
     if (!selectedImage) return;
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('Please log in to use disease detection.');
+      return;
+    }
 
     setLoading(true);
     try {
-      // Simulate AI analysis
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('Starting image analysis...');
+      console.log('Crop type:', cropType);
+      console.log('Selected image:', selectedImage.name);
       
-      const mockResult = {
-        disease: 'Leaf Blight',
-        confidence: 87,
-        severity: 'Moderate',
-        description: 'Leaf blight is a common fungal disease that affects plant leaves, causing brown spots and eventual leaf death.',
-        treatment: [
-          'Remove and destroy infected plant material',
-          'Apply fungicide containing copper or chlorothalonil',
-          'Improve air circulation around plants',
-          'Avoid overhead watering'
-        ],
-        prevention: [
-          'Plant disease-resistant varieties',
-          'Maintain proper spacing between plants',
-          'Water at the base of plants',
-          'Rotate crops annually'
-        ]
-      };
+      // Convert image to base64
+      const base64Image = await convertToBase64(selectedImage);
+      console.log('Image converted to base64, length:', base64Image.length);
       
-      setAnalysisResult(mockResult);
+      // Call the backend API
+      console.log('Calling backend API...');
+      const response = await diseaseAPI.detectDisease({
+        image_data: base64Image,
+        crop_type: cropType,
+        location: 'User Location'
+      });
+      
+      console.log('API response:', response.data);
+      
+      if (response.data && response.data.detection_result) {
+        const result = response.data.detection_result;
+        setAnalysisResult({
+          disease: result.name,
+          confidence: Math.round(result.confidence * 100),
+          severity: result.detected_severity || result.severity_levels?.[0] || 'Unknown',
+          description: result.symptoms ? result.symptoms.join('. ') : 'Disease detected in plant.',
+          treatment: result.treatment ? [result.treatment] : ['Consult agricultural expert'],
+          prevention: result.prevention ? [result.prevention] : ['Maintain good growing conditions'],
+          image_analysis: result.image_analysis || {}
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
+      
+      let errorMessage = 'Unable to analyze the image. Please try again.';
+      
+      if (error.response?.status === 401) {
+        errorMessage = 'Please log in to use disease detection.';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Invalid image or crop type. Please check your selection.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Fallback to mock data if API fails
+      const mockResult = {
+        disease: 'Analysis Failed',
+        confidence: 0,
+        severity: 'Unknown',
+        description: errorMessage,
+        treatment: ['Please check your login status and try again'],
+        prevention: ['Ensure you are logged in and have a valid image']
+      };
+      setAnalysisResult(mockResult);
     } finally {
       setLoading(false);
     }
+  };
+
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove the data:image/jpeg;base64, prefix
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
   };
 
   const clearImage = () => {
@@ -85,11 +154,43 @@ const DiseaseDetection = () => {
       <div className="page-header">
         <h1>Disease Detection</h1>
         <p>Upload an image of your plant to detect diseases using AI</p>
+        {!isLoggedIn && (
+          <div className="login-warning">
+            <AlertTriangle size={20} />
+            <span>Please log in to use disease detection features.</span>
+          </div>
+        )}
       </div>
 
       <div className="detection-container">
         <div className="upload-section">
           <h2>Upload Plant Image</h2>
+          
+          <div className="crop-selector">
+            <label htmlFor="crop-type">Select Crop Type:</label>
+            <select 
+              id="crop-type" 
+              value={cropType} 
+              onChange={(e) => setCropType(e.target.value)}
+              className="crop-select"
+            >
+              <option value="tomato">Tomato</option>
+              <option value="apple">Apple</option>
+              <option value="cherry">Cherry</option>
+              <option value="corn">Corn</option>
+              <option value="grape">Grape</option>
+              <option value="orange">Orange</option>
+              <option value="peach">Peach</option>
+              <option value="bell_pepper">Bell Pepper</option>
+              <option value="potato">Potato</option>
+              <option value="raspberry">Raspberry</option>
+              <option value="soybean">Soybean</option>
+              <option value="squash">Squash</option>
+              <option value="strawberry">Strawberry</option>
+              <option value="wheat">Wheat</option>
+              <option value="rice">Rice</option>
+            </select>
+          </div>
           
           {!selectedImage ? (
             <div
@@ -98,6 +199,7 @@ const DiseaseDetection = () => {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
+              onClick={() => document.getElementById('file-input').click()}
             >
               <div className="upload-content">
                 <Camera size={48} className="upload-icon" />
@@ -108,8 +210,9 @@ const DiseaseDetection = () => {
                   accept="image/*"
                   onChange={handleFileInput}
                   className="file-input"
+                  id="file-input"
                 />
-                <button className="upload-btn">Choose File</button>
+                <label htmlFor="file-input" className="upload-btn">Choose File</label>
               </div>
             </div>
           ) : (
@@ -128,10 +231,10 @@ const DiseaseDetection = () => {
               </div>
               <button
                 onClick={analyzeImage}
-                disabled={loading}
+                disabled={loading || !isLoggedIn}
                 className="analyze-btn"
               >
-                {loading ? 'Analyzing...' : 'Analyze Image'}
+                {loading ? 'Analyzing...' : !isLoggedIn ? 'Please Log In' : 'Analyze Image'}
               </button>
             </div>
           )}

@@ -129,66 +129,271 @@ DISEASE_DATABASE = {
             'prevention': 'Crop rotation, proper fertilization',
             'confidence': 0.82
         },
-        'scab': {
-            'name': 'Common Scab',
-            'symptoms': ['Rough, scabby patches on tubers', 'Reduced market value', 'Surface lesions'],
+        'healthy': {
+            'name': 'Healthy Potato',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy tuber development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'apple': {
+        'apple_scab': {
+            'name': 'Apple Scab',
+            'symptoms': ['Dark, scaly lesions on leaves and fruit', 'Circular spots with velvety texture', 'Premature leaf drop'],
             'severity_levels': ['mild', 'moderate', 'severe'],
-            'treatment': 'Apply sulfur or acidifying agents',
-            'prevention': 'Maintain soil pH 5.0-5.2, crop rotation',
-            'confidence': 0.76
+            'treatment': 'Apply fungicide containing myclobutanil or captan',
+            'prevention': 'Plant resistant varieties, proper pruning, remove fallen leaves',
+            'confidence': 0.88
+        },
+        'black_rot': {
+            'name': 'Black Rot',
+            'symptoms': ['Brown lesions on leaves', 'Black rot on fruit', 'Cankers on branches'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply copper fungicide or captan',
+            'prevention': 'Remove infected plant parts, improve air circulation',
+            'confidence': 0.85
+        },
+        'cedar_apple_rust': {
+            'name': 'Cedar Apple Rust',
+            'symptoms': ['Yellow-orange spots on leaves', 'Galls on cedar trees', 'Fruit deformation'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply fungicide containing myclobutanil',
+            'prevention': 'Remove cedar trees within 2 miles, plant resistant varieties',
+            'confidence': 0.82
+        },
+        'healthy': {
+            'name': 'Healthy Apple',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'cherry': {
+        'powdery_mildew': {
+            'name': 'Powdery Mildew',
+            'symptoms': ['White powdery coating on leaves', 'Stunted growth', 'Reduced fruit quality'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply sulfur-based fungicide or neem oil',
+            'prevention': 'Ensure good air circulation, avoid overhead watering',
+            'confidence': 0.87
+        },
+        'healthy': {
+            'name': 'Healthy Cherry',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'grape': {
+        'black_rot': {
+            'name': 'Black Rot',
+            'symptoms': ['Circular brown spots on leaves', 'Black rot on berries', 'Cankers on canes'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply fungicide containing mancozeb or captan',
+            'prevention': 'Remove infected plant parts, improve air circulation',
+            'confidence': 0.89
+        },
+        'esca': {
+            'name': 'Esca (Black Measles)',
+            'symptoms': ['Yellowing between leaf veins', 'Black spots on leaves', 'Wood decay in trunk'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Prune infected wood, apply fungicide to wounds',
+            'prevention': 'Proper pruning techniques, avoid trunk wounds',
+            'confidence': 0.81
+        },
+        'leaf_blight': {
+            'name': 'Leaf Blight',
+            'symptoms': ['Brown spots on leaves', 'Premature defoliation', 'Reduced fruit quality'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply copper-based fungicide',
+            'prevention': 'Improve air circulation, avoid overhead watering',
+            'confidence': 0.85
+        },
+        'healthy': {
+            'name': 'Healthy Grape',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'orange': {
+        'haunglongbing': {
+            'name': 'Huanglongbing (Citrus Greening)',
+            'symptoms': ['Yellowing of leaves', 'Small, misshapen fruit', 'Bitter taste'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Remove infected trees, control psyllid vectors',
+            'prevention': 'Use disease-free planting material, monitor for psyllids',
+            'confidence': 0.92
+        },
+        'healthy': {
+            'name': 'Healthy Orange',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'peach': {
+        'bacterial_spot': {
+            'name': 'Bacterial Spot',
+            'symptoms': ['Small dark spots on leaves and fruit', 'Yellowing around spots', 'Fruit cracking'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply copper-based bactericide',
+            'prevention': 'Plant resistant varieties, avoid overhead watering',
+            'confidence': 0.88
+        },
+        'healthy': {
+            'name': 'Healthy Peach',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'bell_pepper': {
+        'bacterial_spot': {
+            'name': 'Bacterial Spot',
+            'symptoms': ['Small dark spots on leaves and fruit', 'Yellowing around spots', 'Fruit rot'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply copper-based bactericide',
+            'prevention': 'Use disease-free seed, avoid overhead watering',
+            'confidence': 0.87
+        },
+        'healthy': {
+            'name': 'Healthy Bell Pepper',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'raspberry': {
+        'healthy': {
+            'name': 'Healthy Raspberry',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'soybean': {
+        'healthy': {
+            'name': 'Healthy Soybean',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy pod development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'squash': {
+        'powdery_mildew': {
+            'name': 'Powdery Mildew',
+            'symptoms': ['White powdery coating on leaves', 'Stunted growth', 'Reduced fruit quality'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply sulfur-based fungicide or neem oil',
+            'prevention': 'Ensure good air circulation, avoid overhead watering',
+            'confidence': 0.88
+        },
+        'healthy': {
+            'name': 'Healthy Squash',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
+        }
+    },
+    'strawberry': {
+        'leaf_scorch': {
+            'name': 'Leaf Scorch',
+            'symptoms': ['Brown spots on leaves', 'Premature defoliation', 'Reduced fruit quality'],
+            'severity_levels': ['mild', 'moderate', 'severe'],
+            'treatment': 'Apply fungicide containing captan',
+            'prevention': 'Remove infected leaves, improve air circulation',
+            'confidence': 0.84
+        },
+        'healthy': {
+            'name': 'Healthy Strawberry',
+            'symptoms': ['No visible disease symptoms', 'Normal leaf color and texture', 'Healthy fruit development'],
+            'severity_levels': ['healthy'],
+            'treatment': 'Continue current care practices',
+            'prevention': 'Maintain good growing conditions',
+            'confidence': 0.90
         }
     }
 }
 
 def simulate_disease_detection(image_data, crop_type):
-    """Simulate disease detection from image data"""
+    """Simulate disease detection from image data using Kaggle dataset structure"""
     # In a real implementation, this would use a trained ML model
-    # For now, we'll simulate based on crop type and random factors
+    # For now, we'll simulate based on crop type and image content for consistent results
     
     if crop_type not in DISEASE_DATABASE:
         return None
     
-    # Simulate detection with some randomness
+    # Create a deterministic hash from image data for consistent results
+    import hashlib
+    try:
+        # Use more of the base64 data and add crop type for better variation
+        hash_input = f"{image_data[:500]}_{crop_type}_{len(image_data)}"
+        image_hash = hashlib.md5(hash_input.encode()).hexdigest()
+        hash_int = int(image_hash[:8], 16)
+    except:
+        # Fallback to random if hash fails
+        hash_int = random.randint(0, 1000000)
+    
+    # Get available diseases for this crop
     diseases = list(DISEASE_DATABASE[crop_type].keys())
     
-    # 70% chance of detecting a disease
-    if random.random() < 0.7:
-        detected_disease = random.choice(diseases)
-        disease_info = DISEASE_DATABASE[crop_type][detected_disease].copy()
-        
-        # Add some randomness to confidence
-        base_confidence = disease_info['confidence']
-        confidence_variation = random.uniform(-0.1, 0.1)
-        disease_info['confidence'] = max(0.5, min(0.95, base_confidence + confidence_variation))
-        
-        # Randomly assign severity
-        disease_info['detected_severity'] = random.choice(disease_info['severity_levels'])
-        
-        # Add image analysis metadata
-        disease_info['image_analysis'] = {
-            'image_size': f"{random.randint(800, 2000)}x{random.randint(600, 1500)}",
-            'processing_time': round(random.uniform(0.5, 3.0), 2),
-            'model_version': 'v2.1.0',
-            'detection_algorithm': 'CNN-based classification'
-        }
-        
-        return disease_info
+    # Use hash to determine if healthy or diseased (20% chance of healthy)
+    is_healthy = (hash_int % 10) < 2
+    
+    if is_healthy and 'healthy' in diseases:
+        detected_disease = 'healthy'
     else:
-        return {
-            'name': 'No Disease Detected',
-            'symptoms': ['Healthy plant appearance'],
-            'severity_levels': ['healthy'],
-            'treatment': 'Continue current care practices',
-            'prevention': 'Maintain good growing conditions',
-            'confidence': 0.85,
-            'detected_severity': 'healthy',
-            'image_analysis': {
-                'image_size': f"{random.randint(800, 2000)}x{random.randint(600, 1500)}",
-                'processing_time': round(random.uniform(0.5, 3.0), 2),
-                'model_version': 'v2.1.0',
-                'detection_algorithm': 'CNN-based classification'
-            }
-        }
+        # Remove 'healthy' from choices for disease detection
+        disease_choices = [d for d in diseases if d != 'healthy']
+        if not disease_choices:
+            disease_choices = diseases
+        # Use different parts of hash for more variation
+        disease_index = (hash_int + len(image_data)) % len(disease_choices)
+        detected_disease = disease_choices[disease_index]
+    
+    disease_info = DISEASE_DATABASE[crop_type][detected_disease].copy()
+    
+    # Add deterministic variation to confidence based on hash
+    base_confidence = disease_info['confidence']
+    confidence_variation = (hash_int % 20 - 10) / 100  # ±10%
+    disease_info['confidence'] = max(0.5, min(0.95, base_confidence + confidence_variation))
+    
+    # Determine severity based on hash
+    severity_choices = disease_info['severity_levels']
+    disease_info['detected_severity'] = severity_choices[hash_int % len(severity_choices)]
+    
+    # Add image analysis metadata
+    disease_info['image_analysis'] = {
+        'image_size': f"{800 + (hash_int % 1200)}x{600 + (hash_int % 900)}",
+        'processing_time': round(0.5 + (hash_int % 150) / 100, 2),
+        'model_version': 'kaggle_dataset_v1.0',
+        'detection_algorithm': 'CNN-based classification (simulated)',
+        'dataset_source': 'Kaggle Crop Diseases Classification',
+        'image_hash': image_hash[:8] if 'image_hash' in locals() else 'unknown'
+    }
+    
+    return disease_info
 
 @disease_bp.route('/detect', methods=['POST'])
 @jwt_required()
