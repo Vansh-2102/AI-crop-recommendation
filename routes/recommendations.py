@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User, Recommendation, db
 import random
 from datetime import datetime
+from integrations.external_apis import get_soil_api, get_weather_api, get_market_api
 
 recommendations_bp = Blueprint('recommendations', __name__)
 
@@ -288,6 +289,151 @@ def get_crop_recommendations():
         
     except Exception as e:
         return jsonify({'error': 'Failed to generate crop recommendations', 'details': str(e)}), 500
+
+@recommendations_bp.route('/crops/auto', methods=['POST'])
+@jwt_required()
+def get_crop_recommendations_auto():
+    """Auto-fetch soil, weather, and market data from simple user input and return recommendations.
+    Request JSON supports:
+      - location: city name (e.g., "Delhi") OR lat/lng
+      - lat, lng: numbers (optional if location city provided)
+      - farm_size: acres (default 1)
+      - budget: currency amount (default 10000)
+      - preferences: dict (optional)
+    """
+    try:
+        data = request.json or {}
+        location = data.get('location')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        farm_size = data.get('farm_size', 1)
+        budget = data.get('budget', 10000)
+        preferences = data.get('preferences', {})
+
+        # Resolve a default location
+        city_for_weather = None
+        latlng_for_soil = None
+
+        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+            latlng_for_soil = (float(lat), float(lng))
+        elif location and isinstance(location, str):
+            city_for_weather = location
+        else:
+            city_for_weather = 'Delhi'
+
+        # Fetch external data with graceful fallbacks
+        soil_api = get_soil_api()
+        weather_api = get_weather_api()
+        market_api = get_market_api()
+
+        # Soil
+        if latlng_for_soil:
+            soil_data = soil_api.get_soil_data(latlng_for_soil[0], latlng_for_soil[1])
+        else:
+            # If no lat/lng, use a reasonable default for soil estimates
+            soil_data = soil_api.get_soil_data(28.6139, 77.2090)  # Delhi coords
+
+        # Weather (current)
+        weather_location = city_for_weather or 'Delhi'
+        weather_data = weather_api.get_current_weather(weather_location)
+
+        # Market (live, limited)
+        market_live = market_api.get_crop_prices(limit=50)
+        records = market_live.get('records') or market_live.get('data') or []
+
+        # Transform market records to a simple list similar to mock structure when possible
+        market_data = []
+        for r in records:
+            try:
+                modal = float(r.get('modal_price') or 0)
+                maxp = float(r.get('max_price') or modal)
+                minp = float(r.get('min_price') or modal)
+                trend = 'rising' if modal >= (minp + maxp) / 2 else 'falling'
+                market_data.append({
+                    'crop': str(r.get('commodity', '')).strip().lower(),
+                    'current_price': modal,
+                    'previous_price': minp,
+                    'price_change': round(modal - minp, 2),
+                    'price_change_percent': round(((modal - minp) / max(minp, 1)) * 100, 2),
+                    'unit': 'per_quintal',
+                    'demand_level': 'high' if trend == 'rising' else 'medium',
+                    'supply_level': 'medium',
+                    'market_trend': trend,
+                    'seasonality': 'current',
+                    'last_updated': datetime.now().isoformat(),
+                })
+            except Exception:
+                continue
+
+        # If live records empty, use mock generator
+        if not market_data:
+            from routes.market import get_mock_market_data
+            market_data = get_mock_market_data()
+
+        # Reuse existing recommendation logic
+        recommendations = []
+        for crop in CROP_RECOMMENDATIONS.keys():
+            suitability_score, factors = calculate_crop_suitability(
+                crop, soil_data, weather_data, market_data
+            )
+            if suitability_score > 30:
+                crop_market = next((item for item in market_data if item['crop'] == crop), None)
+                estimated_yield = estimate_yield(crop, farm_size, suitability_score)
+                estimated_cost = estimate_cost(crop, farm_size)
+                estimated_revenue = estimated_yield * (crop_market['current_price'] if crop_market else 100)
+                estimated_profit = estimated_revenue - estimated_cost
+                confidence = calculate_confidence(suitability_score, factors, crop_market)
+                recommendations.append({
+                    'crop': crop,
+                    'suitability_score': suitability_score,
+                    'confidence': confidence,
+                    'estimated_yield': estimated_yield,
+                    'estimated_cost': estimated_cost,
+                    'estimated_revenue': estimated_revenue,
+                    'estimated_profit': estimated_profit,
+                    'profit_margin': round((estimated_profit / estimated_revenue) * 100, 2) if estimated_revenue > 0 else 0,
+                    'factors': factors,
+                    'market_data': crop_market,
+                    'growing_requirements': CROP_RECOMMENDATIONS[crop],
+                    'recommendation': get_recommendation_text(suitability_score, confidence, factors)
+                })
+
+        recommendations.sort(key=lambda x: (x['suitability_score'] + x['confidence']) / 2, reverse=True)
+        if budget > 0:
+            recommendations = [rec for rec in recommendations if rec['estimated_cost'] <= budget * 1.2]
+
+        # Store minimal record
+        current_user_id = int(get_jwt_identity())
+        recommendation_record = Recommendation(
+            user_id=current_user_id,
+            location=location or weather_location,
+            soil_data=soil_data,
+            weather_data=weather_data,
+            market_data=market_data[:50],
+            recommendations=recommendations[:10],
+            confidence_score=recommendations[0]['confidence'] if recommendations else 0
+        )
+        try:
+            db.session.add(recommendation_record)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return jsonify({
+            'recommendations': recommendations[:10],
+            'inputs': {
+                'location': location or weather_location,
+                'lat': lat,
+                'lng': lng,
+                'farm_size': farm_size,
+                'budget': budget,
+                'preferences': preferences
+            },
+            'timestamp': datetime.now().isoformat()
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': 'Failed to generate crop recommendations (auto)', 'details': str(e)}), 500
 
 @recommendations_bp.route('/history', methods=['GET'])
 @jwt_required()

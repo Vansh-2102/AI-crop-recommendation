@@ -1,100 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { marketAPI } from '../services/api';
 
 const Market = () => {
-  const [marketData, setMarketData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedCrop, setSelectedCrop] = useState('wheat');
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    commodity: 'Wheat',
+    state: '',
+    market: '',
+    limit: 25,
+    sort: 'modal_price',
+    order: 'desc'
+  });
+  const [records, setRecords] = useState([]);
+  const [source, setSource] = useState('');
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchMarketData = async () => {
-      setLoading(true);
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockData = {
-          crops: [
-            {
-              name: 'Wheat',
-              currentPrice: 2500,
-              previousPrice: 2400,
-              change: 4.17,
-              unit: 'per quintal',
-              trend: 'up'
-            },
-            {
-              name: 'Rice',
-              currentPrice: 3200,
-              previousPrice: 3300,
-              change: -3.03,
-              unit: 'per quintal',
-              trend: 'down'
-            },
-            {
-              name: 'Corn',
-              currentPrice: 1800,
-              previousPrice: 1750,
-              change: 2.86,
-              unit: 'per quintal',
-              trend: 'up'
-            },
-            {
-              name: 'Soybeans',
-              currentPrice: 4200,
-              previousPrice: 4100,
-              change: 2.44,
-              unit: 'per quintal',
-              trend: 'up'
-            },
-            {
-              name: 'Cotton',
-              currentPrice: 6500,
-              previousPrice: 6600,
-              change: -1.52,
-              unit: 'per quintal',
-              trend: 'down'
-            },
-            {
-              name: 'Sugarcane',
-              currentPrice: 320,
-              previousPrice: 315,
-              change: 1.59,
-              unit: 'per quintal',
-              trend: 'up'
-            }
-          ],
-          marketTrends: [
-            { month: 'Jan', price: 2400 },
-            { month: 'Feb', price: 2450 },
-            { month: 'Mar', price: 2500 },
-            { month: 'Apr', price: 2480 },
-            { month: 'May', price: 2520 },
-            { month: 'Jun', price: 2500 }
-          ]
-        };
-        
-        setMarketData(mockData);
-      } catch (error) {
-        console.error('Failed to fetch market data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
 
+  const fetchMarketData = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await marketAPI.getPrices(filters);
+      const recs = data.records || data.market_data || [];
+      setRecords(recs);
+      setSource(data.source || (data.records ? 'data.gov.in' : 'mock'));
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Failed to fetch market data');
+      setRecords([]);
+      setSource('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
     fetchMarketData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  if (loading) {
-    return (
-      <div className="market">
-        <div className="page-header">
-          <h1>Market Prices</h1>
-          <p>Loading market data...</p>
-        </div>
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="market">
@@ -104,90 +52,95 @@ const Market = () => {
       </div>
 
       <div className="market-container">
-        <div className="crop-prices">
-          <h2>Current Crop Prices</h2>
-          <div className="prices-grid">
-            {marketData.crops.map((crop, index) => (
-              <div key={index} className="price-card">
-                <div className="crop-header">
-                  <h3>{crop.name}</h3>
-                  <div className={`trend ${crop.trend}`}>
-                    {crop.trend === 'up' ? (
-                      <TrendingUp size={20} />
-                    ) : (
-                      <TrendingDown size={20} />
-                    )}
-                    <span>{crop.change > 0 ? '+' : ''}{crop.change}%</span>
-                  </div>
-                </div>
-                
-                <div className="price-info">
-                  <div className="current-price">
-                    <DollarSign size={24} />
-                    <span className="price-value">{crop.currentPrice}</span>
-                    <span className="price-unit">₹{crop.unit}</span>
-                  </div>
-                  
-                  <div className="price-change">
-                    <span className="previous-price">
-                      Previous: ₹{crop.previousPrice}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="market-analysis">
-          <h2>Market Analysis</h2>
-          <div className="analysis-cards">
-            <div className="analysis-card">
-              <h3>Best Selling Crops</h3>
-              <div className="crop-list">
-                <div className="crop-item">
-                  <span>Wheat</span>
-                  <span className="trend-up">+4.17%</span>
-                </div>
-                <div className="crop-item">
-                  <span>Corn</span>
-                  <span className="trend-up">+2.86%</span>
-                </div>
-                <div className="crop-item">
-                  <span>Soybeans</span>
-                  <span className="trend-up">+2.44%</span>
-                </div>
-              </div>
+        <form className="filter-form" onSubmit={fetchMarketData}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Commodity</label>
+              <input name="commodity" value={filters.commodity} onChange={handleChange} placeholder="e.g., Wheat" />
             </div>
-
-            <div className="analysis-card">
-              <h3>Market Insights</h3>
-              <ul className="insights-list">
-                <li>Wheat prices showing strong upward trend</li>
-                <li>Rice market experiencing slight decline</li>
-                <li>Corn demand increasing in feed industry</li>
-                <li>Cotton prices stabilizing after recent drop</li>
-              </ul>
+            <div className="form-group">
+              <label>State</label>
+              <input name="state" value={filters.state} onChange={handleChange} placeholder="e.g., Maharashtra" />
+            </div>
+            <div className="form-group">
+              <label>Market</label>
+              <input name="market" value={filters.market} onChange={handleChange} placeholder="e.g., Mumbai" />
+            </div>
+            <div className="form-group">
+              <label>Limit</label>
+              <input name="limit" type="number" min="1" max="100" value={filters.limit} onChange={handleChange} />
             </div>
           </div>
-        </div>
-
-        <div className="trading-tips">
-          <h2>Trading Tips</h2>
-          <div className="tips-grid">
-            <div className="tip-card">
-              <h3>📈 Best Time to Sell</h3>
-              <p>Wheat and Corn are at peak prices. Consider selling now.</p>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Sort By</label>
+              <select name="sort" value={filters.sort} onChange={handleChange}>
+                <option value="modal_price">Modal Price</option>
+                <option value="max_price">Max Price</option>
+                <option value="min_price">Min Price</option>
+                <option value="commodity">Commodity</option>
+                <option value="market">Market</option>
+                <option value="state">State</option>
+                <option value="arrival_date">Arrival Date</option>
+              </select>
             </div>
-            <div className="tip-card">
-              <h3>📉 Wait and Watch</h3>
-              <p>Rice prices are declining. Hold your stock for better rates.</p>
+            <div className="form-group">
+              <label>Order</label>
+              <select name="order" value={filters.order} onChange={handleChange}>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
             </div>
-            <div className="tip-card">
-              <h3>🌾 Storage Advice</h3>
-              <p>Proper storage can help you wait for better market conditions.</p>
+            <div className="form-actions">
+              <button type="submit" disabled={loading}>{loading ? 'Loading…' : 'Search'}</button>
             </div>
           </div>
+        </form>
+
+        {error && (
+          <div className="error-banner">
+            {error}
+          </div>
+        )}
+
+        <div className="results-section">
+          <h2>Results {source ? `(${source})` : ''}</h2>
+          {records.length === 0 ? (
+            <p>No records found.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Arrival Date</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>Market</th>
+                    <th>Commodity</th>
+                    <th>Variety</th>
+                    <th>Min</th>
+                    <th>Max</th>
+                    <th>Modal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((r, idx) => (
+                    <tr key={idx}>
+                      <td>{r.arrival_date || '-'}</td>
+                      <td>{r.state || '-'}</td>
+                      <td>{r.district || '-'}</td>
+                      <td>{r.market || '-'}</td>
+                      <td>{r.commodity || r.crop || '-'}</td>
+                      <td>{r.variety || '-'}</td>
+                      <td>{r.min_price ?? '-'}</td>
+                      <td>{r.max_price ?? '-'}</td>
+                      <td>{r.modal_price ?? '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

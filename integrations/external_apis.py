@@ -10,11 +10,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Load environment variables from a .env file if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 class WeatherAPI:
     """OpenWeatherMap API integration"""
     
     def __init__(self):
-        self.api_key = os.getenv('OPENWEATHER_API_KEY')
+        self.api_key = "cfb00ec460704f4b887717f3c1183792"
         self.base_url = "http://api.openweathermap.org/data/2.5"
     
     def get_current_weather(self, location: str) -> Dict[str, Any]:
@@ -88,14 +95,19 @@ class SoilAPI:
     
     def __init__(self):
         self.base_url = "https://rest.isric.org/soilgrids/v2.0"
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Accept': 'application/json',
+            'User-Agent': 'AI-crop-recommendation/1.0 (+https://example.local)'
+        })
     
     def get_soil_data(self, lat: float, lng: float) -> Dict[str, Any]:
         """Get soil data from SoilGrids"""
         try:
-            # SoilGrids properties
+            # Use only properties known to be available in SoilGrids v2.0
+            # Some nutrients (nitrogen/phosphorus/potassium) are not provided directly.
             properties = [
-                'phh2o', 'soc', 'nitrogen', 'phosphorus', 'potassium',
-                'clay', 'sand', 'silt', 'bdod', 'cec'
+                'phh2o', 'soc', 'clay', 'sand', 'silt', 'bdod', 'cec'
             ]
             
             soil_data = {}
@@ -109,7 +121,7 @@ class SoilAPI:
                         'depth': '0-5cm',
                         'value': 'mean'
                     }
-                    response = requests.get(url, params=params)
+                    response = self.session.get(url, params=params, timeout=10)
                     response.raise_for_status()
                     
                     data = response.json()
@@ -119,15 +131,24 @@ class SoilAPI:
                     logger.warning(f"Failed to get {prop}: {e}")
                     continue
             
+            # Derive rough NPK estimates from SOC and texture if direct values unavailable
+            soc = soil_data.get('soc', 2.0)
+            clay_pct = soil_data.get('clay', 30)
+            sand_pct = soil_data.get('sand', 40)
+            # Very rough heuristics (placeholder):
+            estimated_nitrogen = round(max(0.05, min(0.6, soc * 0.1)), 3)
+            estimated_phosphorus = round(max(5, min(60, 10 + clay_pct * 0.3)), 1)
+            estimated_potassium = round(max(50, min(400, 100 + (100 - sand_pct) * 3)), 0)
+
             # Convert to our format
             return {
                 'ph': soil_data.get('phh2o', 6.5),
-                'organic_matter': soil_data.get('soc', 2.0),
-                'nitrogen': soil_data.get('nitrogen', 0.2),
-                'phosphorus': soil_data.get('phosphorus', 20),
-                'potassium': soil_data.get('potassium', 150),
-                'clay': soil_data.get('clay', 30),
-                'sand': soil_data.get('sand', 40),
+                'organic_matter': soc,
+                'nitrogen': estimated_nitrogen,
+                'phosphorus': estimated_phosphorus,
+                'potassium': estimated_potassium,
+                'clay': clay_pct,
+                'sand': sand_pct,
                 'silt': soil_data.get('silt', 30),
                 'bulk_density': soil_data.get('bdod', 1.3),
                 'cec': soil_data.get('cec', 15)
@@ -155,23 +176,43 @@ class MarketAPI:
     """Agricultural market data API integration"""
     
     def __init__(self):
-        self.api_key = os.getenv('MARKET_API_KEY')
-        self.base_url = os.getenv('MARKET_API_URL', 'https://api.agri-market.com')
-    
-    def get_crop_prices(self, crop: Optional[str] = None) -> Dict[str, Any]:
-        """Get crop prices from market API"""
+        # Prefer env vars; fallback to provided key if present
+        self.api_key = os.getenv('DATA_GOV_IN_API_KEY', '579b464db66ec23bdd00000196ac63a1726549244a60dd461653af65')
+        # Default to Agmarknet daily prices resource id (public)
+        self.resource_id = os.getenv('AGMARKNET_RESOURCE_ID', '9ef84268-d588-465a-a308-a864a43d0070')
+        # Correct API base for data.gov.in
+        self.base_url = 'https://api.data.gov.in/resource'
+    def get_crop_prices(self, crop: Optional[str] = None, limit: int = 25, state: Optional[str] = None, market: Optional[str] = None) -> Dict[str, Any]:
+        """Get crop prices from data.gov.in Agmarknet resource.
+        Filters: crop (commodity), state, market; returns JSON structure from API.
+        """
         try:
-            headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
-            
+            params = {
+                'api-key': self.api_key,
+                'format': 'json',
+                'limit': str(limit)
+            }
+
+            # Build resource URL
+            url = f"{self.base_url}/{self.resource_id}"
+
+            # Map our filters to dataset fields (common Agmarknet fields)
+            # commodity, state, district, market
             if crop:
-                url = f"{self.base_url}/prices/{crop}"
-            else:
-                url = f"{self.base_url}/prices"
-            
-            response = requests.get(url, headers=headers)
+                params['filters[commodity]'] = crop
+            if state:
+                params['filters[state]'] = state
+            if market:
+                params['filters[market]'] = market
+
+            response = requests.get(url, params=params, timeout=20)
             response.raise_for_status()
-            
-            return response.json()
+            data = response.json()
+
+            # Return as-is if structure looks correct; else fallback
+            if isinstance(data, dict) and ('records' in data or 'data' in data):
+                return data
+            return self._get_fallback_market_data()
         except Exception as e:
             logger.error(f"Market API error: {e}")
             return self._get_fallback_market_data()

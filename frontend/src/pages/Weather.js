@@ -1,37 +1,87 @@
 import React, { useState, useEffect } from 'react';
 import { Cloud, Sun, CloudRain, Wind, Thermometer, Droplets } from 'lucide-react';
+import { weatherAPI } from '../services/api';
 
 const Weather = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState('Delhi');
+  const [query, setQuery] = useState('Delhi');
 
   useEffect(() => {
-    // Simulate weather data fetch
     const fetchWeatherData = async () => {
       setLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockData = {
-          location: 'Farm Location',
+        const locationToUse = location?.trim() || 'Delhi';
+        const res = await weatherAPI.getWeather(locationToUse);
+        const payload = res.data?.weather;
+
+        if (!payload) throw new Error('No weather data');
+
+        const current = payload.current || {};
+        const forecast = Array.isArray(payload.forecast) ? payload.forecast : [];
+
+        // Group 3-hourly forecast into daily aggregates (high/low and a representative condition)
+        const groups = {};
+        forecast.forEach((f) => {
+          const datePart = (f.date || '').split(' ')[0];
+          if (!datePart) return;
+          const temp = Number(
+            (f.day_temperature ?? f.temperature ?? current.temperature) || 0
+          );
+          const lowTemp = Number(
+            (f.night_temperature ?? temp - 7)
+          );
+          const cond = (f.conditions || '').toLowerCase();
+          if (!groups[datePart]) {
+            groups[datePart] = {
+              high: -Infinity,
+              low: Infinity,
+              conditionCounts: {},
+            };
+          }
+          groups[datePart].high = Math.max(groups[datePart].high, temp);
+          groups[datePart].low = Math.min(groups[datePart].low, lowTemp);
+          groups[datePart].conditionCounts[cond] =
+            (groups[datePart].conditionCounts[cond] || 0) + 1;
+        });
+
+        const sortedDates = Object.keys(groups).sort();
+        const daily = sortedDates.slice(0, 5).map((d) => {
+          const g = groups[d];
+          const condition = Object.entries(g.conditionCounts)
+            .sort((a, b) => b[1] - a[1])[0]?.[0] || 'clouds';
+          const icon = condition.includes('rain')
+            ? 'rain'
+            : condition.includes('sun') || condition.includes('clear')
+            ? 'sun'
+            : 'cloud';
+          return {
+            day: d,
+            high: Math.round(g.high === -Infinity ? 0 : g.high),
+            low: Math.round(g.low === Infinity ? 0 : g.low),
+            condition: condition,
+            icon,
+          };
+        });
+
+        const mapped = {
+          location: payload.location || locationToUse,
           current: {
-            temperature: 28,
-            humidity: 65,
-            windSpeed: 12,
-            condition: 'Partly Cloudy',
-            icon: 'cloud'
+            temperature: current.temperature,
+            humidity: current.humidity,
+            windSpeed: current.wind_speed ?? current.windSpeed,
+            condition: current.conditions || current.condition || 'Unknown',
+            icon: (current.conditions || '').toLowerCase().includes('rain')
+              ? 'rain'
+              : (current.conditions || '').toLowerCase().includes('sun') || (current.conditions || '').toLowerCase().includes('clear')
+              ? 'sun'
+              : 'cloud',
           },
-          forecast: [
-            { day: 'Today', high: 30, low: 22, condition: 'Sunny', icon: 'sun' },
-            { day: 'Tomorrow', high: 28, low: 20, condition: 'Cloudy', icon: 'cloud' },
-            { day: 'Day 3', high: 25, low: 18, condition: 'Rainy', icon: 'rain' },
-            { day: 'Day 4', high: 27, low: 19, condition: 'Partly Cloudy', icon: 'cloud' },
-            { day: 'Day 5', high: 29, low: 21, condition: 'Sunny', icon: 'sun' }
-          ]
+          forecast: daily,
         };
-        
-        setWeatherData(mockData);
+
+        setWeatherData(mapped);
       } catch (error) {
         console.error('Failed to fetch weather data:', error);
       } finally {
@@ -40,7 +90,15 @@ const Weather = () => {
     };
 
     fetchWeatherData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if (query && query.trim().length > 0) {
+      setLocation(query.trim());
+    }
+  };
 
   const getWeatherIcon = (icon) => {
     switch (icon) {
@@ -72,6 +130,19 @@ const Weather = () => {
       <div className="page-header">
         <h1>Weather Forecast</h1>
         <p>Current weather conditions and 5-day forecast</p>
+        <form onSubmit={onSubmit} style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Enter city or location (e.g., Delhi)"
+            style={{ padding: 8, minWidth: 240 }}
+          />
+          <button type="submit" style={{ padding: '8px 14px' }}>Search</button>
+        </form>
+        {location && (
+          <p style={{ marginTop: 8 }}><strong>Location:</strong> {location}</p>
+        )}
       </div>
 
       <div className="weather-container">

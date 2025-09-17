@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from integrations.external_apis import get_market_api
 import random
 from datetime import datetime, timedelta
 
@@ -99,37 +100,81 @@ def get_seasonal_multiplier(seasonality, current_month):
 @market_bp.route('/prices', methods=['GET'])
 @jwt_required()
 def get_market_prices():
-    """Get current market prices for all crops"""
+    """Get market prices.
+    Accepts query params: commodity/crop, state, market, limit, sort, order.
+    Uses data.gov.in live data; falls back to mock on failure.
+    """
     try:
-        crop_filter = request.args.get('crop')
-        sort_by = request.args.get('sort', 'crop')  # crop, price, change
+        # Inputs
+        commodity = request.args.get('commodity') or request.args.get('crop')
+        state = request.args.get('state')
+        market_name = request.args.get('market')
+        limit = int(request.args.get('limit', 25))
+        sort_by = request.args.get('sort', 'commodity')  # commodity, modal_price, max_price, min_price, market
         order = request.args.get('order', 'asc')  # asc, desc
-        
+
+        # Try live API first
+        api = get_market_api()
+        live = api.get_crop_prices(crop=commodity, state=state, market=market_name, limit=limit)
+
+        records = live.get('records') or live.get('data')
+        if isinstance(records, list) and records:
+            # Optional sorting for convenience
+            key_map = {
+                'commodity': lambda r: (r.get('commodity') or '').lower(),
+                'market': lambda r: (r.get('market') or '').lower(),
+                'state': lambda r: (r.get('state') or '').lower(),
+                'modal_price': lambda r: float(r.get('modal_price') or 0),
+                'max_price': lambda r: float(r.get('max_price') or 0),
+                'min_price': lambda r: float(r.get('min_price') or 0),
+                'arrival_date': lambda r: r.get('arrival_date') or ''
+            }
+            if sort_by in key_map:
+                records = sorted(records, key=key_map[sort_by], reverse=(order == 'desc'))
+
+            return jsonify({
+                'source': 'data.gov.in',
+                'records': records,
+                'count': len(records),
+                'filters_applied': {
+                    'commodity': commodity,
+                    'state': state,
+                    'market': market_name,
+                    'limit': limit,
+                    'sort_by': sort_by,
+                    'order': order
+                },
+                'timestamp': datetime.now().isoformat()
+            }), 200
+
+        # Fallback to mock if live returns empty or unexpected
         market_data = get_mock_market_data()
-        
-        # Filter by crop if specified
-        if crop_filter:
-            market_data = [item for item in market_data if crop_filter.lower() in item['crop'].lower()]
-        
-        # Sort data
-        if sort_by == 'price':
+        if commodity:
+            market_data = [item for item in market_data if commodity.lower() in item['crop'].lower()]
+
+        # Sort mock data
+        if sort_by in ['modal_price', 'max_price', 'min_price', 'price']:
             market_data.sort(key=lambda x: x['current_price'], reverse=(order == 'desc'))
         elif sort_by == 'change':
             market_data.sort(key=lambda x: x['price_change_percent'], reverse=(order == 'desc'))
-        else:  # sort by crop name
+        elif sort_by in ['commodity', 'crop']:
             market_data.sort(key=lambda x: x['crop'], reverse=(order == 'desc'))
-        
+
         return jsonify({
-            'market_data': market_data,
+            'source': 'mock',
+            'market_data': market_data[:limit],
             'total_crops': len(market_data),
             'filters_applied': {
-                'crop': crop_filter,
+                'commodity': commodity,
+                'state': state,
+                'market': market_name,
+                'limit': limit,
                 'sort_by': sort_by,
                 'order': order
             },
             'timestamp': datetime.now().isoformat()
         }), 200
-        
+
     except Exception as e:
         return jsonify({'error': 'Failed to fetch market prices', 'details': str(e)}), 500
 

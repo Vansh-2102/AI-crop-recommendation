@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import random
 from datetime import datetime, timedelta
+import os
+from integrations.external_apis import get_weather_api
 
 weather_bp = Blueprint('weather', __name__)
 
@@ -64,6 +66,56 @@ def get_mock_weather_data(location):
         'last_updated': datetime.now().isoformat()
     }
 
+
+def get_live_weather_bundle(location: str):
+    """Fetch live weather (and forecast if available) and map to our schema."""
+    api = get_weather_api()
+    if not getattr(api, 'api_key', None):
+        return None
+    current = api.get_current_weather(location)
+    # current is a flat dict from integrations.external_apis. Map to our structure.
+    now_iso = datetime.now().isoformat()
+    current_block = {
+        'temperature': current.get('temperature'),
+        'humidity': current.get('humidity'),
+        'wind_speed': current.get('wind_speed'),
+        'precipitation': current.get('precipitation', 0),
+        'conditions': current.get('conditions'),
+        'uv_index': random.randint(1, 10),  # not provided by API
+        'pressure': current.get('pressure')
+    }
+    alerts = generate_weather_alerts(
+        current_block['temperature'] if current_block['temperature'] is not None else 0,
+        current_block['precipitation'],
+        current_block['wind_speed'] if current_block['wind_speed'] is not None else 0
+    )
+    # Try to get forecast; if it fails, provide empty list gracefully
+    try:
+        forecast_api = api.get_forecast(location, days=7)
+        forecast_list = [
+            {
+                'date': item.get('date'),
+                'day_temperature': item.get('temperature'),
+                'night_temperature': max(item.get('temperature', 0) - 7, -50),
+                'precipitation': item.get('precipitation', 0),
+                'humidity': item.get('humidity'),
+                'wind_speed': item.get('wind_speed', random.uniform(3, 30)),
+                'conditions': item.get('conditions')
+            }
+            for item in forecast_api.get('forecast', [])
+        ]
+    except Exception:
+        forecast_list = []
+    return {
+        'location': current.get('location') or location,
+        'current': current_block,
+        'forecast': forecast_list,
+        'alerts': alerts,
+        'last_updated': now_iso,
+        'source_location': current.get('location'),
+        'source_country': current.get('country')
+    }
+
 def generate_weather_alerts(temp, precip, wind):
     """Generate weather alerts based on conditions"""
     alerts = []
@@ -109,10 +161,24 @@ def get_weather_data(location):
         # Validate location parameter
         if not location or len(location.strip()) == 0:
             return jsonify({'error': 'Location parameter is required'}), 400
-        
-        # Get mock weather data
+
+        # Prefer live weather when API key is present; fallback to mock
+        live_bundle = get_live_weather_bundle(location)
+        if live_bundle:
+            return jsonify({
+                'weather': {
+                    'location': live_bundle['location'],
+                    'current': live_bundle['current'],
+                    'forecast': live_bundle['forecast'],
+                    'alerts': live_bundle['alerts'],
+                    'last_updated': live_bundle['last_updated']
+                },
+                'source': 'openweathermap',
+                'timestamp': live_bundle['last_updated']
+            }), 200
+
+        # Fallback to mock data
         weather_data = get_mock_weather_data(location)
-        
         return jsonify({
             'weather': weather_data,
             'source': 'mock_weather_api',
@@ -130,12 +196,21 @@ def get_weather_forecast(location):
         days = request.args.get('days', 7, type=int)
         if days < 1 or days > 30:
             return jsonify({'error': 'Days parameter must be between 1 and 30'}), 400
-        
+
+        # Try live forecast first
+        live_bundle = get_live_weather_bundle(location)
+        if live_bundle and live_bundle['forecast']:
+            return jsonify({
+                'location': live_bundle['location'],
+                'forecast_days': days,
+                'forecast': live_bundle['forecast'][:days],
+                'source': 'openweathermap',
+                'timestamp': live_bundle['last_updated']
+            }), 200
+
+        # Fallback to mock
         weather_data = get_mock_weather_data(location)
-        
-        # Limit forecast to requested days
         weather_data['forecast'] = weather_data['forecast'][:days]
-        
         return jsonify({
             'location': location,
             'forecast_days': days,
@@ -152,6 +227,15 @@ def get_weather_forecast(location):
 def get_weather_alerts(location):
     """Get weather alerts for a location"""
     try:
+        # Prefer live current conditions for alert generation
+        live_bundle = get_live_weather_bundle(location)
+        if live_bundle:
+            return jsonify({
+                'location': live_bundle['location'],
+                'alerts': live_bundle['alerts'],
+                'alert_count': len(live_bundle['alerts']),
+                'timestamp': live_bundle['last_updated']
+            }), 200
         weather_data = get_mock_weather_data(location)
         
         return jsonify({
@@ -169,8 +253,16 @@ def get_weather_alerts(location):
 def get_agricultural_conditions(location):
     """Get agricultural-specific weather conditions"""
     try:
-        weather_data = get_mock_weather_data(location)
-        current = weather_data['current']
+        live_bundle = get_live_weather_bundle(location)
+        if live_bundle:
+            current = live_bundle['current']
+            last_updated = live_bundle['last_updated']
+            source = 'openweathermap'
+        else:
+            weather_data = get_mock_weather_data(location)
+            current = weather_data['current']
+            last_updated = weather_data['last_updated']
+            source = 'mock_weather_api'
         
         # Calculate agricultural indices
         growing_degree_days = max(0, current['temperature'] - 10)  # Base temperature of 10°C
@@ -212,7 +304,8 @@ def get_agricultural_conditions(location):
         return jsonify({
             'agricultural_conditions': agricultural_conditions,
             'weather_summary': current,
-            'timestamp': weather_data['last_updated']
+            'source': source,
+            'timestamp': last_updated
         }), 200
         
     except Exception as e:
