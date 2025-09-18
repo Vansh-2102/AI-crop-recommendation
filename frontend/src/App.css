@@ -1138,3 +1138,37 @@
 .no-data-message li {
   margin-bottom: 0.5rem;
 }
+
+/* Voice Assistant Styles */
+.message-meta {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.intent {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.confidence {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.message.error {
+  background: #ffebee;
+  border-left: 4px solid #f44336;
+}
+
+.message.error .message-content p {
+  color: #c62828;
+}

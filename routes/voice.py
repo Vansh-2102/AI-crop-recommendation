@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import random
 import re
+import hashlib
 from datetime import datetime
 
 voice_bp = Blueprint('voice', __name__)
@@ -93,9 +94,22 @@ def generate_voice_response(intent_data, query_text, user_location=''):
     confidence = intent_data['confidence']
     
     if intent == 'weather':
+        # Multiple weather response templates for variety
+        weather_responses = [
+            f"Based on your location, the current weather is sunny with a temperature of 25°C. Humidity is at 60% and there's a 20% chance of rain today. Perfect conditions for most crops!",
+            f"The weather forecast shows partly cloudy skies with temperatures around 23°C. Light winds and 30% humidity make it ideal for outdoor farming activities.",
+            f"Current conditions are overcast with 22°C temperature and 70% humidity. There's a 40% chance of light rain, so consider covering sensitive crops.",
+            f"Beautiful sunny day ahead! Temperature is 27°C with low humidity at 45%. Great weather for planting and field work.",
+            f"Weather update: Clear skies with 24°C temperature. Perfect for crop monitoring and applying treatments. No rain expected today."
+        ]
+        
+        # Use query hash to select consistent but varied response
+        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
+        selected_response = weather_responses[query_hash % len(weather_responses)]
+        
         return {
             'response_type': 'weather_query',
-            'response_text': f"Based on your location, the current weather is sunny with a temperature of 25°C. Humidity is at 60% and there's a 20% chance of rain today. Perfect conditions for most crops!",
+            'response_text': selected_response,
             'action_required': False,
             'follow_up_questions': [
                 "Would you like a 7-day weather forecast?",
@@ -104,9 +118,21 @@ def generate_voice_response(intent_data, query_text, user_location=''):
         }
     
     elif intent == 'soil':
+        # Multiple soil response templates for variety
+        soil_responses = [
+            f"Your soil analysis shows pH level of 6.5, which is optimal for most crops. Moisture content is at 30% and nutrient levels are good. I recommend adding organic matter to improve soil structure.",
+            f"Based on recent soil tests, your soil pH is 6.8 with good drainage. Organic matter content is 2.5%, and nitrogen levels are adequate. Consider adding compost for better fertility.",
+            f"Your soil conditions look healthy! pH is at 6.2, moisture is 35%, and nutrient balance is good. The soil structure could benefit from some organic amendments.",
+            f"Current soil analysis indicates pH of 6.7, which is slightly alkaline but still suitable for most crops. Moisture levels are at 28% and phosphorus levels are optimal.",
+            f"Your soil test results show pH 6.4, good moisture retention at 32%, and balanced nutrients. The soil is well-draining and ready for planting season."
+        ]
+        
+        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
+        selected_response = soil_responses[query_hash % len(soil_responses)]
+        
         return {
             'response_type': 'soil_query',
-            'response_text': f"Your soil analysis shows pH level of 6.5, which is optimal for most crops. Moisture content is at 30% and nutrient levels are good. I recommend adding organic matter to improve soil structure.",
+            'response_text': selected_response,
             'action_required': False,
             'follow_up_questions': [
                 "Would you like specific fertilizer recommendations?",
@@ -115,9 +141,21 @@ def generate_voice_response(intent_data, query_text, user_location=''):
         }
     
     elif intent == 'crop':
+        # Multiple crop response templates for variety
+        crop_responses = [
+            f"Based on your soil conditions and current season, I recommend planting wheat, rice, or corn. These crops are well-suited for your area and have good market demand. Would you like detailed growing instructions?",
+            f"For your current soil type and climate, I suggest growing tomatoes, peppers, or beans. These vegetables have high market value and grow well in your region.",
+            f"Considering the season and soil conditions, I recommend planting potatoes, carrots, or onions. These root vegetables are profitable and relatively easy to grow.",
+            f"Based on market trends and your soil analysis, I suggest growing soybeans, cotton, or sugarcane. These cash crops have good demand and suitable for your area.",
+            f"For optimal yield this season, I recommend planting leafy greens like spinach, lettuce, or kale. They have quick growth cycles and high nutritional value."
+        ]
+        
+        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
+        selected_response = crop_responses[query_hash % len(crop_responses)]
+        
         return {
             'response_type': 'crop_query',
-            'response_text': f"Based on your soil conditions and current season, I recommend planting wheat, rice, or corn. These crops are well-suited for your area and have good market demand. Would you like detailed growing instructions?",
+            'response_text': selected_response,
             'action_required': True,
             'action_type': 'crop_recommendation',
             'follow_up_questions': [
@@ -139,9 +177,21 @@ def generate_voice_response(intent_data, query_text, user_location=''):
         }
     
     elif intent == 'market':
+        # Multiple market response templates for variety
+        market_responses = [
+            f"Current market prices are looking good! Wheat is at ₹2,500 per quintal, rice at ₹3,000, and corn at ₹2,000. Prices have been stable with slight upward trends. Good time to plan your harvest and sales.",
+            f"Market update: Rice prices are strong at ₹3,200 per quintal, while wheat is trading at ₹2,600. Corn prices have increased to ₹2,100. Overall market sentiment is positive for farmers.",
+            f"Today's crop prices show rice at ₹3,100 per quintal, wheat at ₹2,450, and corn at ₹1,950. The market is showing good demand for quality produce. Consider timing your sales strategically.",
+            f"Latest market data: Rice ₹3,300 per quintal, wheat ₹2,700, corn ₹2,200. Prices are trending upward due to increased demand. This is an excellent time to sell your harvest.",
+            f"Current market conditions favor farmers! Rice is at ₹3,150 per quintal, wheat at ₹2,550, and corn at ₹2,050. Strong demand and limited supply are driving prices up."
+        ]
+        
+        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
+        selected_response = market_responses[query_hash % len(market_responses)]
+        
         return {
             'response_type': 'market_query',
-            'response_text': f"Current market prices are looking good! Wheat is at ₹2,500 per quintal, rice at ₹3,000, and corn at ₹2,000. Prices have been stable with slight upward trends. Good time to plan your harvest and sales.",
+            'response_text': selected_response,
             'action_required': False,
             'follow_up_questions': [
                 "Would you like price forecasts for specific crops?",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, MessageSquare } from 'lucide-react';
+import axios from 'axios';
 
 const VoiceAssistant = () => {
   const [isListening, setIsListening] = useState(false);
@@ -8,11 +9,17 @@ const VoiceAssistant = () => {
   const [response, setResponse] = useState('');
   const [conversation, setConversation] = useState([]);
   const [isSupported, setIsSupported] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setIsSupported(!!SpeechRecognition);
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
   }, []);
 
   const startListening = () => {
@@ -55,39 +62,65 @@ const VoiceAssistant = () => {
   };
 
   const handleVoiceCommand = async (command) => {
+    if (!isLoggedIn) {
+      alert('Please log in to use the Voice Assistant');
+      return;
+    }
+
     const userMessage = { type: 'user', text: command, timestamp: new Date() };
     setConversation(prev => [...prev, userMessage]);
 
-    // Simulate AI response
-    const aiResponse = generateAIResponse(command);
-    const assistantMessage = { type: 'assistant', text: aiResponse, timestamp: new Date() };
-    setConversation(prev => [...prev, assistantMessage]);
-    
-    setResponse(aiResponse);
-    speakText(aiResponse);
-  };
+    setLoading(true);
+    try {
+      // Call the backend voice API
+      const token = localStorage.getItem('access_token');
+      const response = await axios.post('http://localhost:5000/api/voice/query', {
+        query: command,
+        location: 'User Location',
+        language: 'en'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-  const generateAIResponse = (command) => {
-    const lowerCommand = command.toLowerCase();
-    
-    if (lowerCommand.includes('weather')) {
-      return "The current weather is partly cloudy with a temperature of 28°C. It's a good day for outdoor farming activities.";
-    } else if (lowerCommand.includes('soil')) {
-      return "Based on your recent soil analysis, your soil pH is 6.5, which is optimal for most crops. I recommend adding organic compost to improve soil structure.";
-    } else if (lowerCommand.includes('crop') || lowerCommand.includes('plant')) {
-      return "For your current soil conditions, I recommend planting wheat or corn. These crops are well-suited for your region and current weather patterns.";
-    } else if (lowerCommand.includes('irrigation') || lowerCommand.includes('water')) {
-      return "Your soil moisture is at 60%. I recommend watering your crops every 2-3 days during this dry season. Monitor the soil moisture regularly.";
-    } else if (lowerCommand.includes('disease') || lowerCommand.includes('pest')) {
-      return "I can help you identify plant diseases. Please upload an image of the affected plant, and I'll analyze it for you.";
-    } else if (lowerCommand.includes('market') || lowerCommand.includes('price')) {
-      return "Current market prices: Wheat is at ₹2500 per quintal, Rice at ₹3200, and Corn at ₹1800. Wheat prices are trending upward.";
-    } else if (lowerCommand.includes('hello') || lowerCommand.includes('hi')) {
-      return "Hello! I'm your AI farming assistant. How can I help you with your farm today?";
-    } else {
-      return "I understand you're asking about: " + command + ". Could you please be more specific about what farming information you need?";
+      const aiResponse = response.data.response_text;
+      const assistantMessage = { 
+        type: 'assistant', 
+        text: aiResponse, 
+        timestamp: new Date(),
+        intent: response.data.detected_intent,
+        confidence: response.data.confidence
+      };
+      setConversation(prev => [...prev, assistantMessage]);
+      
+      setResponse(aiResponse);
+      speakText(aiResponse);
+    } catch (error) {
+      console.error('Voice API error:', error);
+      let errorMessage = 'Sorry, I could not process your request. Please try again.';
+      
+      if (error.response?.status === 401) {
+        errorMessage = 'Please log in to use the Voice Assistant.';
+        setIsLoggedIn(false);
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      const assistantMessage = { 
+        type: 'assistant', 
+        text: errorMessage, 
+        timestamp: new Date(),
+        error: true
+      };
+      setConversation(prev => [...prev, assistantMessage]);
+      setResponse(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
+
 
   const speakText = (text) => {
     if ('speechSynthesis' in window) {
@@ -117,6 +150,11 @@ const VoiceAssistant = () => {
       <div className="page-header">
         <h1>Voice Assistant</h1>
         <p>Talk to your AI farming assistant using voice commands</p>
+        {!isLoggedIn && (
+          <div className="login-warning">
+            <p>⚠️ Please log in to use the Voice Assistant</p>
+          </div>
+        )}
       </div>
 
       <div className="assistant-container">
@@ -133,10 +171,12 @@ const VoiceAssistant = () => {
                 <button
                   onClick={isListening ? stopListening : startListening}
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
-                  disabled={isSpeaking}
+                  disabled={isSpeaking || !isLoggedIn || loading}
                 >
                   {isListening ? <MicOff size={32} /> : <Mic size={32} />}
-                  <span>{isListening ? 'Stop Listening' : 'Start Listening'}</span>
+                  <span>
+                    {loading ? 'Processing...' : isListening ? 'Stop Listening' : 'Start Listening'}
+                  </span>
                 </button>
               </div>
 
@@ -184,9 +224,17 @@ const VoiceAssistant = () => {
               </div>
             ) : (
               conversation.map((message, index) => (
-                <div key={index} className={`message ${message.type}`}>
+                <div key={index} className={`message ${message.type} ${message.error ? 'error' : ''}`}>
                   <div className="message-content">
                     <p>{message.text}</p>
+                    {message.intent && (
+                      <div className="message-meta">
+                        <span className="intent">Intent: {message.intent}</span>
+                        {message.confidence && (
+                          <span className="confidence">Confidence: {Math.round(message.confidence * 100)}%</span>
+                        )}
+                      </div>
+                    )}
                     <span className="message-time">
                       {message.timestamp.toLocaleTimeString()}
                     </span>
