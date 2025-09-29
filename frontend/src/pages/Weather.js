@@ -130,15 +130,15 @@ const Weather = () => {
       <div className="page-header">
         <h1>Weather Forecast</h1>
         <p>Current weather conditions and 5-day forecast</p>
-        <form onSubmit={onSubmit} style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <form onSubmit={onSubmit} className="search-bar">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Enter city or location (e.g., Delhi)"
-            style={{ padding: 8, minWidth: 240 }}
+            className="search-input"
           />
-          <button type="submit" style={{ padding: '8px 14px' }}>Search</button>
+          <button type="submit" className="search-btn">Search</button>
         </form>
         {location && (
           <p style={{ marginTop: 8 }}><strong>Location:</strong> {location}</p>

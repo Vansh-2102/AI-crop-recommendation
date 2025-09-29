@@ -326,16 +326,32 @@ def get_crop_recommendations_auto():
         weather_api = get_weather_api()
         market_api = get_market_api()
 
-        # Soil
-        if latlng_for_soil:
-            soil_data = soil_api.get_soil_data(latlng_for_soil[0], latlng_for_soil[1])
-        else:
-            # If no lat/lng, use a reasonable default for soil estimates
-            soil_data = soil_api.get_soil_data(28.6139, 77.2090)  # Delhi coords
+        # Soil: prefer user-provided values, otherwise fetch minimal external data
+        soil_data = data.get('soil_data') or {}
+        if not isinstance(soil_data, dict):
+            soil_data = {}
+        if 'ph' not in soil_data or 'soil_type' not in soil_data or 'moisture' not in soil_data:
+            try:
+                if latlng_for_soil:
+                    fetched = soil_api.get_soil_data(latlng_for_soil[0], latlng_for_soil[1])
+                else:
+                    fetched = soil_api.get_soil_data(28.6139, 77.2090)  # Delhi coords as fallback
+                # Merge fetched values only for missing keys
+                for k in ('ph', 'clay', 'sand', 'silt', 'organic_matter', 'cec'):
+                    if k not in soil_data and k in fetched:
+                        soil_data[k] = fetched[k]
+            except Exception:
+                pass
 
-        # Weather (current)
-        weather_location = city_for_weather or 'Delhi'
-        weather_data = weather_api.get_current_weather(weather_location)
+        # Weather (current): prefer provided temperature; else fetch
+        weather_data = data.get('weather_data') or {}
+        if not isinstance(weather_data, dict):
+            weather_data = {}
+        if 'temperature' not in weather_data:
+            weather_location = city_for_weather or 'Delhi'
+            fetched_weather = weather_api.get_current_weather(weather_location)
+            if isinstance(fetched_weather, dict):
+                weather_data.update(fetched_weather)
 
         # Market (live, limited)
         market_live = market_api.get_crop_prices(limit=50)

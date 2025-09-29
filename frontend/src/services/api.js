@@ -8,6 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
 
 // Request interceptor to add auth token
@@ -72,6 +73,7 @@ export const marketAPI = {
 // Recommendations API
 export const recommendationsAPI = {
   getCropRecommendations: (data) => api.post('/api/recommend/crops', data),
+  getCropRecommendationsAuto: (data) => api.post('/api/recommend/crops/auto', data),
   getHistory: (page = 1, perPage = 10) => api.get(`/api/recommend/history?page=${page}&per_page=${perPage}`),
   optimizeRecommendations: (data) => api.post('/api/recommend/optimize', data),
 };
