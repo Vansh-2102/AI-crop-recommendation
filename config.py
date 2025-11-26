@@ -34,6 +34,11 @@ class Config:
     AZURE_SPEECH_KEY = os.environ.get('AZURE_SPEECH_KEY')
     GOOGLE_SPEECH_KEY = os.environ.get('GOOGLE_SPEECH_KEY')
     
+    # Google OAuth configuration
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+    GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid_configuration"
+    
     # Rate limiting
     RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL') or 'memory://'
     

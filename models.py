@@ -12,10 +12,19 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)  # Nullable for Google OAuth users
     location = db.Column(db.String(200))
     farm_size = db.Column(db.Float)  # in acres
     preferred_language = db.Column(db.String(10), default='en')
+    phone = db.Column(db.String(20))
+    farming_experience = db.Column(db.Integer)  # in years
+    crops = db.Column(db.Text)  # JSON string list of crops
+    
+    # Google OAuth fields
+    google_id = db.Column(db.String(100), unique=True, nullable=True)
+    profile_picture = db.Column(db.String(500), nullable=True)
+    auth_provider = db.Column(db.String(20), default='local')  # 'local', 'google'
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -37,9 +46,34 @@ class User(db.Model):
             'location': self.location,
             'farm_size': self.farm_size,
             'preferred_language': self.preferred_language,
+            'phone': self.phone,
+            'farming_experience': self.farming_experience,
+            'crops': self.get_crops(),
+            'profile_picture': self.profile_picture,
+            'auth_provider': self.auth_provider,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+    def get_crops(self):
+        if self.crops:
+            try:
+                return json.loads(self.crops)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    def set_crops(self, crops_list):
+        if not crops_list:
+            self.crops = json.dumps([])
+            return
+        if isinstance(crops_list, list):
+            cleaned = [c.strip() for c in crops_list if isinstance(c, str) and c.strip()]
+        elif isinstance(crops_list, str):
+            cleaned = [crops_list.strip()] if crops_list.strip() else []
+        else:
+            cleaned = []
+        self.crops = json.dumps(cleaned)
 
 class Farm(db.Model):
     __tablename__ = 'farms'

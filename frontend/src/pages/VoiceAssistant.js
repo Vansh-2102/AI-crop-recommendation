@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, MessageSquare } from 'lucide-react';
-import axios from 'axios';
+import { voiceAPI } from '../services/api';
 
 const VoiceAssistant = () => {
   const [isListening, setIsListening] = useState(false);
@@ -11,6 +11,27 @@ const VoiceAssistant = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [derivedLocation, setDerivedLocation] = useState('');
+  const [interpretedLocation, setInterpretedLocation] = useState('');
+
+  const extractLocationFromText = (text) => {
+    try {
+      if (!text) return '';
+      // English prepositions
+      let m = text.match(/\b(?:in|at|for|near)\s+([a-zA-Z][a-zA-Z\s'-]{2,})\b/i);
+      if (m && m[1]) {
+        let c = m[1].replace(/\b(today|tomorrow|now|please|currently)\b/gi, '').trim().replace(/[?!.,]+$/, '');
+        const parts = c.split(/\s+/).filter(Boolean).slice(0,3);
+        if (parts.length) return parts.map(w => w[0].toUpperCase()+w.slice(1)).join(' ');
+      }
+      // Basic Hindi: "<place> में" or "में <place>"
+      m = text.match(/([\u0900-\u097F\s'-]{2,})में/); // e.g., मेरठ में
+      if (m && m[1]) return m[1].trim();
+      m = text.match(/में\s+([\u0900-\u097F\s'-]{2,})/);
+      if (m && m[1]) return m[1].trim();
+    } catch (_) {}
+    return '';
+  };
 
   useEffect(() => {
     // Check if speech recognition is supported
@@ -20,6 +41,25 @@ const VoiceAssistant = () => {
     // Check if user is logged in
     const token = localStorage.getItem('access_token');
     setIsLoggedIn(!!token);
+
+    // Try to derive a user-friendly location using browser geolocation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords || {};
+          // Reverse geocode to a city/town using OpenStreetMap Nominatim
+          const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+          const data = await resp.json();
+          const addr = data.address || {};
+          const city = addr.city || addr.town || addr.village || addr.hamlet || addr.county || addr.state;
+          if (city) setDerivedLocation(String(city));
+        } catch (_) {
+          // ignore failures, fallback will be used
+        }
+      }, () => {
+        // permission denied or error; silently fallback
+      }, { enableHighAccuracy: false, timeout: 5000 });
+    }
   }, []);
 
   const startListening = () => {
@@ -72,17 +112,15 @@ const VoiceAssistant = () => {
 
     setLoading(true);
     try {
-      // Call the backend voice API
-      const token = localStorage.getItem('access_token');
-      const response = await axios.post('http://localhost:5000/api/voice/query', {
+      // Prefer a real-ish location from stored profile or fallback
+      const profile = JSON.parse(localStorage.getItem('user') || '{}');
+      const extracted = extractLocationFromText(command);
+      if (extracted) setInterpretedLocation(extracted);
+      const location = extracted || derivedLocation || profile.location || 'Delhi';
+      const response = await voiceAPI.processQuery({
         query: command,
-        location: 'User Location',
+        location,
         language: 'en'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
       });
 
       const aiResponse = response.data.response_text;
@@ -178,6 +216,11 @@ const VoiceAssistant = () => {
                     {loading ? 'Processing...' : isListening ? 'Stop Listening' : 'Start Listening'}
                   </span>
                 </button>
+                {(interpretedLocation || derivedLocation) && (
+                  <div className="location-hint" style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+                    {interpretedLocation ? `Using location: ${interpretedLocation}` : `Using location: ${derivedLocation}`}
+                  </div>
+                )}
               </div>
 
               <div className="speech-controls">

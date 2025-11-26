@@ -5,6 +5,43 @@ import re
 import hashlib
 from datetime import datetime
 
+# Import live/mock helpers from existing feature routes to ground answers in real data
+try:
+    # Weather helpers
+    from routes.weather import get_live_weather_bundle, get_mock_weather_data
+except Exception:  # pragma: no cover - fallback if module path changes
+    get_live_weather_bundle = None
+    get_mock_weather_data = None
+
+try:
+    # Soil helpers (mock generator good enough if no lat/lng provided)
+    from routes.soil import get_mock_soil_data
+except Exception:
+    get_mock_soil_data = None
+
+try:
+    # Market helpers
+    from routes.market import get_mock_market_data
+except Exception:
+    get_mock_market_data = None
+
+try:
+    # Recommendation scoring utilities
+    from routes.recommendations import (
+        CROP_RECOMMENDATIONS,
+        calculate_crop_suitability,
+        estimate_yield,
+        estimate_cost,
+    )
+except Exception:
+    CROP_RECOMMENDATIONS = {}
+    def calculate_crop_suitability(*args, **kwargs):
+        return 0, []
+    def estimate_yield(*args, **kwargs):
+        return 0
+    def estimate_cost(*args, **kwargs):
+        return 0
+
 voice_bp = Blueprint('voice', __name__)
 
 # Mock voice query patterns and responses
@@ -13,7 +50,9 @@ VOICE_PATTERNS = {
         'patterns': [
             r'weather|temperature|rain|sunny|cloudy|humidity',
             r'what.*weather|how.*weather|weather.*like',
-            r'rain.*today|sunny.*today|cloudy.*today'
+            r'rain.*today|sunny.*today|cloudy.*today',
+            # Hindi keywords
+            r'मौसम|बारिश|तापमान|धूप|बादल|आर्द्रता',
         ],
         'response_type': 'weather_query'
     },
@@ -21,7 +60,8 @@ VOICE_PATTERNS = {
         'patterns': [
             r'soil|ph|moisture|nutrient|fertilizer',
             r'what.*soil|soil.*condition|soil.*quality',
-            r'ph.*level|moisture.*level|nutrient.*level'
+            r'ph.*level|moisture.*level|nutrient.*level',
+            r'मिट्टी|उर्वरक|नमी|अम्लता'
         ],
         'response_type': 'soil_query'
     },
@@ -29,7 +69,8 @@ VOICE_PATTERNS = {
         'patterns': [
             r'crop|plant|grow|harvest|yield',
             r'what.*crop|which.*crop|best.*crop',
-            r'plant.*now|grow.*now|harvest.*when'
+            r'plant.*now|grow.*now|harvest.*when',
+            r'फसल|उगाऊँ|बोऊँ|कटाई'
         ],
         'response_type': 'crop_query'
     },
@@ -37,7 +78,8 @@ VOICE_PATTERNS = {
         'patterns': [
             r'disease|sick|infected|pest|problem',
             r'what.*wrong|plant.*sick|leaf.*spot',
-            r'disease.*plant|pest.*control|treatment'
+            r'disease.*plant|pest.*control|treatment',
+            r'रोग|बीमारी|कीट|इलाज'
         ],
         'response_type': 'disease_query'
     },
@@ -45,7 +87,8 @@ VOICE_PATTERNS = {
         'patterns': [
             r'price|market|sell|buy|cost',
             r'what.*price|how.*much|market.*price',
-            r'sell.*crop|buy.*seed|price.*today'
+            r'sell.*crop|buy.*seed|price.*today',
+            r'कीमत|भाव|बाजार'
         ],
         'response_type': 'market_query'
     },
@@ -58,6 +101,55 @@ VOICE_PATTERNS = {
         'response_type': 'recommendation_query'
     }
 }
+
+def extract_location_from_query(query_text: str) -> str | None:
+    """Best-effort extraction of a city/location mentioned in the query.
+    Examples handled: 'weather in Meerut', 'market price for wheat in Agra', 'rain at Pune today'.
+    Returns the capitalized location token(s) if found, else None.
+    """
+    try:
+        text = (query_text or '').strip()
+        # Common prepositions that introduce locations
+        match = re.search(r"\b(?:in|at|for|near)\s+([a-zA-Z][a-zA-Z\s'-]{2,})\b", text, flags=re.IGNORECASE)
+        if match:
+            # Trim trailing question words or today/tomorrow, etc.
+            candidate = match.group(1)
+            candidate = re.sub(r"\b(today|tomorrow|now|please|currently)\b", "", candidate, flags=re.IGNORECASE)
+            candidate = candidate.strip(" ?!.,")
+            # Keep up to 3 words (e.g., New Delhi, Los Angeles)
+            parts = [p for p in re.split(r"\s+", candidate) if p]
+            if parts:
+                parts = parts[:3]
+                return " ".join(w[:1].upper() + w[1:] for w in parts)
+    except Exception:
+        pass
+    return None
+
+def extract_crop_from_query(query_text: str) -> str | None:
+    """Extract a crop/commodity name from the query if present."""
+    try:
+        text = (query_text or '').lower()
+        # Known crops from market/recommendations
+        known = [
+            'wheat','rice','corn','sugarcane','cotton','soybean','potato','tomato',
+            'onion','chili','mango','banana','apple','grapes','pomegranate'
+        ]
+        for crop in known:
+            if re.search(rf"\b{re.escape(crop)}\b", text):
+                return crop
+        # Hindi common names quick map
+        hindi_map = {
+            'गेहूं': 'wheat', 'चावल': 'rice', 'मक्का': 'corn', 'गन्ना': 'sugarcane',
+            'कपास': 'cotton', 'सोयाबीन': 'soybean', 'आलू': 'potato', 'टमाटर': 'tomato',
+            'प्याज': 'onion', 'मिर्च': 'chili', 'आम': 'mango', 'केला': 'banana',
+            'सेब': 'apple', 'अंगूर': 'grapes', 'अनार': 'pomegranate'
+        }
+        for h, eng in hindi_map.items():
+            if h in text:
+                return eng
+    except Exception:
+        pass
+    return None
 
 def process_voice_query(query_text, user_location=''):
     """Process voice query and determine intent"""
@@ -94,74 +186,117 @@ def generate_voice_response(intent_data, query_text, user_location=''):
     confidence = intent_data['confidence']
     
     if intent == 'weather':
-        # Multiple weather response templates for variety
-        weather_responses = [
-            f"Based on your location, the current weather is sunny with a temperature of 25°C. Humidity is at 60% and there's a 20% chance of rain today. Perfect conditions for most crops!",
-            f"The weather forecast shows partly cloudy skies with temperatures around 23°C. Light winds and 30% humidity make it ideal for outdoor farming activities.",
-            f"Current conditions are overcast with 22°C temperature and 70% humidity. There's a 40% chance of light rain, so consider covering sensitive crops.",
-            f"Beautiful sunny day ahead! Temperature is 27°C with low humidity at 45%. Great weather for planting and field work.",
-            f"Weather update: Clear skies with 24°C temperature. Perfect for crop monitoring and applying treatments. No rain expected today."
-        ]
-        
-        # Use query hash to select consistent but varied response
-        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
-        selected_response = weather_responses[query_hash % len(weather_responses)]
-        
+        # Try live bundle first; fallback to mock to avoid failures
+        location_from_query = extract_location_from_query(query_text)
+        location = location_from_query or user_location or 'Delhi'
+        weather_bundle = None
+        if callable(get_live_weather_bundle):
+            try:
+                weather_bundle = get_live_weather_bundle(location)
+            except Exception:
+                weather_bundle = None
+        if not weather_bundle and callable(get_mock_weather_data):
+            try:
+                weather_bundle = get_mock_weather_data(location)
+            except Exception:
+                weather_bundle = None
+
+        if weather_bundle:
+            # Normalize shape: live bundle already in unified schema; mock uses same keys
+            current = weather_bundle.get('current') or weather_bundle
+            temp = current.get('temperature')
+            hum = current.get('humidity')
+            cond = (current.get('conditions') or 'Unknown').lower()
+            wind = current.get('wind_speed')
+            summary = (
+                f"Weather in {location}: {cond.capitalize()} {temp}°C, "
+                f"humidity {hum}%, wind {wind} km/h."
+            )
+            advisory = (
+                " Irrigation: moderate needed." if hum < 50 else
+                " Irrigation: light or none required."
+            )
+            return {
+                'response_type': 'weather_query',
+                'response_text': summary + advisory,
+                'action_required': False,
+                'follow_up_questions': [
+                    "Would you like a 7-day forecast?",
+                    "Need agricultural conditions for irrigation planning?",
+                ],
+            }
+        # If everything fails, fall back to a safe generic sentence
         return {
             'response_type': 'weather_query',
-            'response_text': selected_response,
+            'response_text': 'I could not fetch live weather right now. Please try again shortly.',
             'action_required': False,
-            'follow_up_questions': [
-                "Would you like a 7-day weather forecast?",
-                "Do you need weather alerts for your crops?"
-            ]
         }
     
     elif intent == 'soil':
-        # Multiple soil response templates for variety
-        soil_responses = [
-            f"Your soil analysis shows pH level of 6.5, which is optimal for most crops. Moisture content is at 30% and nutrient levels are good. I recommend adding organic matter to improve soil structure.",
-            f"Based on recent soil tests, your soil pH is 6.8 with good drainage. Organic matter content is 2.5%, and nitrogen levels are adequate. Consider adding compost for better fertility.",
-            f"Your soil conditions look healthy! pH is at 6.2, moisture is 35%, and nutrient balance is good. The soil structure could benefit from some organic amendments.",
-            f"Current soil analysis indicates pH of 6.7, which is slightly alkaline but still suitable for most crops. Moisture levels are at 28% and phosphorus levels are optimal.",
-            f"Your soil test results show pH 6.4, good moisture retention at 32%, and balanced nutrients. The soil is well-draining and ready for planting season."
-        ]
-        
-        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
-        selected_response = soil_responses[query_hash % len(soil_responses)]
-        
+        # Use mock soil generator with a default lat/lng if none provided
+        soil_summary = None
+        if callable(get_mock_soil_data):
+            try:
+                # Default to Delhi approx coords when we lack GPS
+                soil = get_mock_soil_data(28.6139, 77.2090)
+                soil_summary = (
+                    f"Soil pH {soil['ph']}, moisture {round(soil['moisture']*100)}%, "
+                    f"type {soil['soil_type']}, fertility {soil['fertility_rating'].lower()}."
+                )
+            except Exception:
+                soil_summary = None
         return {
             'response_type': 'soil_query',
-            'response_text': selected_response,
+            'response_text': soil_summary or 'I could not assess soil right now. Try again later.',
             'action_required': False,
             'follow_up_questions': [
-                "Would you like specific fertilizer recommendations?",
-                "Do you need help with soil testing?"
-            ]
+                'Do you want fertilizer recommendations?',
+                'Should I analyze your soil details if you provide pH and moisture?',
+            ],
         }
     
     elif intent == 'crop':
-        # Multiple crop response templates for variety
-        crop_responses = [
-            f"Based on your soil conditions and current season, I recommend planting wheat, rice, or corn. These crops are well-suited for your area and have good market demand. Would you like detailed growing instructions?",
-            f"For your current soil type and climate, I suggest growing tomatoes, peppers, or beans. These vegetables have high market value and grow well in your region.",
-            f"Considering the season and soil conditions, I recommend planting potatoes, carrots, or onions. These root vegetables are profitable and relatively easy to grow.",
-            f"Based on market trends and your soil analysis, I suggest growing soybeans, cotton, or sugarcane. These cash crops have good demand and suitable for your area.",
-            f"For optimal yield this season, I recommend planting leafy greens like spinach, lettuce, or kale. They have quick growth cycles and high nutritional value."
-        ]
-        
-        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
-        selected_response = crop_responses[query_hash % len(crop_responses)]
-        
+        # Build a quick recommendation grounded in soil/weather/market utilities
+        location = user_location or 'Delhi'
+        # Weather (live/mock)
+        weather_bundle = None
+        if callable(get_live_weather_bundle):
+            try:
+                weather_bundle = get_live_weather_bundle(location)
+            except Exception:
+                weather_bundle = None
+        if not weather_bundle and callable(get_mock_weather_data):
+            weather_bundle = get_mock_weather_data(location)
+        current_temp = (weather_bundle or {}).get('current', {}).get('temperature', 25)
+        # Soil (mock)
+        soil = get_mock_soil_data(28.6139, 77.2090) if callable(get_mock_soil_data) else {'ph': 6.5, 'moisture': 0.3, 'soil_type': 'loamy'}
+        # Market (mock)
+        market = get_mock_market_data() if callable(get_mock_market_data) else []
+
+        scored = []
+        for crop in (CROP_RECOMMENDATIONS or {}).keys():
+            score, factors = calculate_crop_suitability(crop, soil, {'temperature': current_temp}, market)
+            if score > 30:
+                scored.append((crop, score, factors))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top = scored[:3]
+        if top:
+            parts = [f"{c} ({s}% suitability)" for c, s, _ in top]
+            summary = "Best crops now: " + ", ".join(parts) + "."
+            return {
+                'response_type': 'crop_query',
+                'response_text': summary,
+                'action_required': True,
+                'action_type': 'crop_recommendation',
+                'follow_up_questions': [
+                    'Should I open the AI Recommendations page?',
+                    'Do you want details for a specific crop?',
+                ],
+            }
         return {
             'response_type': 'crop_query',
-            'response_text': selected_response,
-            'action_required': True,
-            'action_type': 'crop_recommendation',
-            'follow_up_questions': [
-                "Which crop interests you most?",
-                "Do you need planting schedule information?"
-            ]
+            'response_text': 'I could not compute crop suitability right now.',
+            'action_required': False,
         }
     
     elif intent == 'disease':
@@ -177,26 +312,45 @@ def generate_voice_response(intent_data, query_text, user_location=''):
         }
     
     elif intent == 'market':
-        # Multiple market response templates for variety
-        market_responses = [
-            f"Current market prices are looking good! Wheat is at ₹2,500 per quintal, rice at ₹3,000, and corn at ₹2,000. Prices have been stable with slight upward trends. Good time to plan your harvest and sales.",
-            f"Market update: Rice prices are strong at ₹3,200 per quintal, while wheat is trading at ₹2,600. Corn prices have increased to ₹2,100. Overall market sentiment is positive for farmers.",
-            f"Today's crop prices show rice at ₹3,100 per quintal, wheat at ₹2,450, and corn at ₹1,950. The market is showing good demand for quality produce. Consider timing your sales strategically.",
-            f"Latest market data: Rice ₹3,300 per quintal, wheat ₹2,700, corn ₹2,200. Prices are trending upward due to increased demand. This is an excellent time to sell your harvest.",
-            f"Current market conditions favor farmers! Rice is at ₹3,150 per quintal, wheat at ₹2,550, and corn at ₹2,050. Strong demand and limited supply are driving prices up."
-        ]
-        
-        query_hash = int(hashlib.md5(query_text.encode()).hexdigest()[:8], 16)
-        selected_response = market_responses[query_hash % len(market_responses)]
-        
+        # Use query-mentioned location if present for contextual message, though
+        # current mock market generator is pan-India; this mostly improves phrasing.
+        location_from_query = extract_location_from_query(query_text)
+        crop_from_query = extract_crop_from_query(query_text)
+        data = get_mock_market_data()[:] if callable(get_mock_market_data) else []
+        if data:
+            if crop_from_query:
+                filtered = [d for d in data if d['crop'] == crop_from_query]
+                if filtered:
+                    d = filtered[0]
+                    summary = (
+                        f"{crop_from_query.capitalize()} price"
+                        + (f" near {location_from_query}" if location_from_query else "")
+                        + f": ₹{d['current_price']} {d['unit'].replace('_',' ')} (trend {d['market_trend']}, demand {d['demand_level']})."
+                    )
+                    return {
+                        'response_type': 'market_query',
+                        'response_text': summary,
+                        'action_required': False,
+                        'follow_up_questions': ['Want detailed price chart for this crop?'],
+                    }
+            # Take top 3 by demand then trend
+            data.sort(key=lambda x: (x['demand_level'] == 'high', x['market_trend'] == 'rising', x['price_change_percent']), reverse=True)
+            top = data[:3]
+            msg = ", ".join([f"{d['crop']} ₹{d['current_price']}/{d['unit'].replace('_',' ')}" for d in top])
+            if location_from_query:
+                summary = f"Market highlights near {location_from_query}: {msg}."
+            else:
+                summary = f"Market highlights: {msg}."
+        else:
+            summary = 'I could not fetch market data right now.'
         return {
             'response_type': 'market_query',
-            'response_text': selected_response,
+            'response_text': summary,
             'action_required': False,
             'follow_up_questions': [
-                "Would you like price forecasts for specific crops?",
-                "Do you need help with market timing?"
-            ]
+                'Want detailed prices for a specific crop?',
+                'Should I open the Market page?',
+            ],
         }
     
     elif intent == 'recommendation':

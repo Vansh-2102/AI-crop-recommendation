@@ -51,7 +51,7 @@ const Register = () => {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Create Account</h1>
-          <p>Join Crop AI to get started</p>
+          <p>Join AI Farming Assistant to get started</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">

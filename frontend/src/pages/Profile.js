@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Mail, MapPin, Phone, Edit, Save, X } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    location: user?.location || '',
-    farmSize: user?.farmSize || '',
-    experience: user?.experience || '',
-    crops: user?.crops || []
+
+  const buildProfileState = (userData) => ({
+    name: userData?.name || '',
+    email: userData?.email || '',
+    phone: userData?.phone || '',
+    location: userData?.location || '',
+    farm_size: userData?.farm_size || '',
+    farming_experience: userData?.farming_experience || '',
+    crops: userData?.crops || []
   });
+
+  const [formData, setFormData] = useState(buildProfileState(user));
+
+  useEffect(() => {
+    setFormData(buildProfileState(user));
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData({
@@ -48,25 +54,26 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    try {
-      await updateProfile(formData);
-      toast.success('Profile updated successfully!');
+    const sanitizedCrops = formData.crops
+      .map((crop) => crop.trim())
+      .filter((crop) => crop.length > 0);
+    
+    const payload = {
+      ...formData,
+      farm_size: formData.farm_size === '' ? null : Number(formData.farm_size),
+      farming_experience:
+        formData.farming_experience === '' ? null : Number(formData.farming_experience),
+      crops: sanitizedCrops
+    };
+
+    const result = await updateProfile(payload);
+    if (result?.success) {
       setIsEditing(false);
-    } catch (error) {
-      toast.error('Failed to update profile');
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: user?.name || '',
-      email: user?.email || '',
-      phone: user?.phone || '',
-      location: user?.location || '',
-      farmSize: user?.farmSize || '',
-      experience: user?.experience || '',
-      crops: user?.crops || []
-    });
+    setFormData(buildProfileState(user));
     setIsEditing(false);
   };
 
@@ -194,13 +201,13 @@ const Profile = () => {
                   {isEditing ? (
                     <input
                       type="number"
-                      name="farmSize"
-                      value={formData.farmSize}
+                      name="farm_size"
+                      value={formData.farm_size}
                       onChange={handleChange}
                       placeholder="Enter farm size"
                     />
                   ) : (
-                    <span>{formData.farmSize || 'Not provided'}</span>
+                    <span>{formData.farm_size || 'Not provided'}</span>
                   )}
                 </div>
 
@@ -209,13 +216,13 @@ const Profile = () => {
                   {isEditing ? (
                     <input
                       type="number"
-                      name="experience"
-                      value={formData.experience}
+                      name="farming_experience"
+                      value={formData.farming_experience}
                       onChange={handleChange}
                       placeholder="Enter years of experience"
                     />
                   ) : (
-                    <span>{formData.experience || 'Not provided'}</span>
+                    <span>{formData.farming_experience || 'Not provided'}</span>
                   )}
                 </div>
               </div>
@@ -272,11 +279,11 @@ const Profile = () => {
             </div>
             <div className="stat-card">
               <h3>Farm Size</h3>
-              <p>{formData.farmSize || '0'} acres</p>
+              <p>{formData.farm_size || '0'} acres</p>
             </div>
             <div className="stat-card">
               <h3>Experience</h3>
-              <p>{formData.experience || '0'} years</p>
+              <p>{formData.farming_experience || '0'} years</p>
             </div>
             <div className="stat-card">
               <h3>Member Since</h3>
