@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { Camera, AlertTriangle, X } from 'lucide-react';
 import { diseaseAPI } from '../services/api';
 
 const DiseaseDetection = () => {
@@ -9,6 +9,7 @@ const DiseaseDetection = () => {
   const [dragActive, setDragActive] = useState(false);
   const [cropType, setCropType] = useState('tomato');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   // Check login status on component mount
   React.useEffect(() => {
@@ -199,7 +200,7 @@ const DiseaseDetection = () => {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              onClick={() => document.getElementById('file-input').click()}
+              onClick={() => fileInputRef.current?.click()}
             >
               <div className="upload-content">
                 <Camera size={48} className="upload-icon" />
@@ -210,9 +211,18 @@ const DiseaseDetection = () => {
                   accept="image/*"
                   onChange={handleFileInput}
                   className="file-input"
-                  id="file-input"
+                  ref={fileInputRef}
                 />
-                <label htmlFor="file-input" className="upload-btn">Choose File</label>
+                <button
+                  type="button"
+                  className="upload-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  Choose File
+                </button>
               </div>
             </div>
           ) : (
